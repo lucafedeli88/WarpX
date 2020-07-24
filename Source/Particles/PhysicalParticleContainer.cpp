@@ -1870,7 +1870,7 @@ PhysicalParticleContainer::PushPX (WarpXParIter& pti,
 
         scaleFields(xp, yp, zp, Exp, Eyp, Ezp, Bxp, Byp, Bzp);
 
-#ifdef WARPX_WED
+#ifdef WARPX_QED
     if (local_has_quantum_sync) {
         evolve_opt(ux[ip], uy[ip], uz[ip],
                    Exp, Eyp, Ezp,Bxp, Byp, Bzp,
