@@ -132,7 +132,7 @@ public:
     static long charge_deposition_algo;
     static long field_gathering_algo;
     static long particle_pusher_algo;
-    static int maxwell_fdtd_solver_id;
+    static int maxwell_solver_id;
     static long load_balance_costs_update_algo;
     static int em_solver_medium;
     static int macroscopic_solver_algo;
@@ -165,6 +165,8 @@ public:
     static int  l_lower_order_in_v;
 
     static bool use_filter;
+    static bool use_kspace_filter;
+    static bool use_filter_compensation;
     static bool serialize_ics;
 
     // Back transformation diagnostic
