@@ -342,6 +342,27 @@ PhysicalParticleContainer::AddGaussianBeam (
                   particle_x.dataPtr(),  particle_y.dataPtr(),  particle_z.dataPtr(),
                   particle_ux.dataPtr(), particle_uy.dataPtr(), particle_uz.dataPtr(),
                   1, particle_w.dataPtr(),1);
+
+#ifdef WARPX_QED
+    if(!has_quantum_sync())
+        return;
+
+    auto get_opt = m_shr_p_qs_engine->build_optical_depth_functor();
+
+    #ifdef _OPENMP
+    #pragma omp parallel
+    #endif
+    for (WarpXParIter pti(*this, 0); pti.isValid(); ++pti){
+        const long np = pti.numParticles();
+        auto optical_depth = pti.GetAttribs(particle_comps["optical_depth_QSR"]).dataPtr();
+        amrex::ParallelFor( np, [=] AMREX_GPU_DEVICE (long ip)
+        {
+            optical_depth[ip] = get_opt();
+        });
+    }
+#endif
+
+
 }
 
 void

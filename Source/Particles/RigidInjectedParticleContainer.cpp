@@ -249,12 +249,22 @@ RigidInjectedParticleContainer::PushPX (WarpXParIter& pti,
     Gpu::ManagedDeviceVector<ParticleReal> xp_save, yp_save, zp_save;
     RealVector uxp_save, uyp_save, uzp_save;
 
+#ifdef WARPX_QED
+    RealVector opt_depth_save;
+#endif
+
     const auto GetPosition = GetParticlePosition(pti);
           auto SetPosition = SetParticlePosition(pti);
 
     ParticleReal* const AMREX_RESTRICT ux = uxp.dataPtr();
     ParticleReal* const AMREX_RESTRICT uy = uyp.dataPtr();
     ParticleReal* const AMREX_RESTRICT uz = uzp.dataPtr();
+
+#ifdef WARPX_QED
+    const bool loc_has_quantum_sync = has_quantum_sync();
+    amrex::Real* AMREX_RESTRICT p_opt_depth = nullptr;
+    amrex::Real* AMREX_RESTRICT p_opt_depth_save = nullptr;
+#endif
 
     if (!done_injecting_lev)
     {
@@ -277,6 +287,14 @@ RigidInjectedParticleContainer::PushPX (WarpXParIter& pti,
         amrex::Real* const AMREX_RESTRICT uyp_save_ptr = uyp_save.dataPtr();
         amrex::Real* const AMREX_RESTRICT uzp_save_ptr = uzp_save.dataPtr();
 
+#ifdef WARPX_QED
+        if(loc_has_quantum_sync){
+            p_opt_depth = pti.GetAttribs(particle_comps["optical_depth_QSR"]).dataPtr();
+            opt_depth_save.resize(np);
+            p_opt_depth_save = opt_depth_save.dataPtr();
+        }
+#endif
+
         amrex::ParallelFor( np,
                             [=] AMREX_GPU_DEVICE (long i) {
                                 ParticleReal xp, yp, zp;
@@ -287,6 +305,11 @@ RigidInjectedParticleContainer::PushPX (WarpXParIter& pti,
                                 uxp_save_ptr[i] = ux[i];
                                 uyp_save_ptr[i] = uy[i];
                                 uzp_save_ptr[i] = uz[i];
+#ifdef WARPX_QED
+                                if(loc_has_quantum_sync)
+                                    p_opt_depth_save[i] = p_opt_depth[i];
+#endif
+
                             });
     }
 
@@ -331,6 +354,11 @@ RigidInjectedParticleContainer::PushPX (WarpXParIter& pti,
                                         zp = z_save[i] + dt*uz[i]*gi;
                                     }
                                     SetPosition(i, xp, yp, zp);
+
+#ifdef WARPX_QED
+                                    p_opt_depth[i] = p_opt_depth_save[i];
+#endif
+
                                 }
                             });
     }
