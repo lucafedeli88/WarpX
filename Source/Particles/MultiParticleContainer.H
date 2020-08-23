@@ -385,7 +385,7 @@ private:
     std::vector<int> map_species_back_transformed_diagnostics;
     int do_back_transformed_diagnostics = 0;
 
-    void MFItInfoCheckTiling(const WarpXParticleContainer& pc_src) const noexcept
+    void MFItInfoCheckTiling(const WarpXParticleContainer& /*pc_src*/) const noexcept
     {
         return;
     }
