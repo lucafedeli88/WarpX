@@ -100,6 +100,7 @@ PhotonParticleContainer::PushPX (WarpXParIter& pti,
     ParticleReal* const AMREX_RESTRICT ux = attribs[PIdx::ux].dataPtr();
     ParticleReal* const AMREX_RESTRICT uy = attribs[PIdx::uy].dataPtr();
     ParticleReal* const AMREX_RESTRICT uz = attribs[PIdx::uz].dataPtr();
+    ParticleReal* const AMREX_RESTRICT ww = attribs[PIdx::w].dataPtr();
 
 #ifdef WARPX_QED
     AMREX_ASSERT(has_breit_wheeler());
@@ -181,7 +182,7 @@ PhotonParticleContainer::PushPX (WarpXParIter& pti,
 #ifdef WARPX_QED
             if (local_has_breit_wheeler) {
                 evolve_opt(ux[i], uy[i], uz[i], Exp, Eyp, Ezp, Bxp, Byp, Bzp,
-                    dt, p_optical_depth_BW[i]);
+                    dt, ww[i], p_optical_depth_BW[i]);
             }
 #endif
 

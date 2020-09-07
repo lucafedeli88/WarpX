@@ -141,7 +141,14 @@ public:
             e_ux, e_uy, e_uz,
             p_ux, p_uy, p_uz);
 
-        src.m_aos[i_src].id() = -1; //destroy photon after pair generation
+        constexpr amrex::Real CST = 1.0/CORR;
+
+        dst1.m_rdata[PIdx::w][i_dst1] = CST;
+        dst2.m_rdata[PIdx::w][i_dst2] = CST;
+        src.m_rdata[PIdx::w][i_src] -= CST;
+
+        if(src.m_rdata[PIdx::w][i_src]*CORR <= 1.0)
+            src.m_aos[i_src].id() = -1; //destroy photon after pair generation
     }
 
 private:

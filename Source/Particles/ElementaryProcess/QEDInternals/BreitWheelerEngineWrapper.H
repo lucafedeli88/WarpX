@@ -21,6 +21,12 @@
 #include <string>
 #include <vector>
 
+#if AMREX_SPACEDIM == 2
+        constexpr amrex::Real CORR = 5.0e-7;
+#else
+        constexpr amrex::Real CORR = 1.0;
+#endif
+
 // Aliases =============================
 using BW_dndt_table_params =
     picsar::multi_physics::phys::breit_wheeler::
@@ -131,7 +137,7 @@ public:
         const amrex::Real ux, const amrex::Real uy, const amrex::Real uz,
         const amrex::Real ex, const amrex::Real ey, const amrex::Real ez,
         const amrex::Real bx, const amrex::Real by, const amrex::Real bz,
-        const amrex::Real dt, amrex::Real& opt_depth) const noexcept
+        const amrex::Real dt, const amrex::Real ww, amrex::Real& opt_depth) const noexcept
     {
         namespace pxr_m = picsar::multi_physics::math;
         namespace pxr_p = picsar::multi_physics::phys;
@@ -151,11 +157,13 @@ public:
             chi_phot < m_bw_minimum_chi_phot)
             return 0;
 
+
+
         const auto is_out = pxr_bw::evolve_optical_depth<
             amrex::Real,
             BW_dndt_table_view,
             pxr_p::unit_system::SI>(
-                energy, chi_phot, dt, opt_depth, m_table_view);
+                energy, chi_phot, dt*ww*CORR, opt_depth, m_table_view);
 
         return is_out;
     }
