@@ -695,6 +695,18 @@ MultiParticleContainer::doCoulombCollisions ()
     }
 }
 
+void MultiParticleContainer::doResampling (const int timestep)
+{
+    WARPX_PROFILE("MPC::doResampling");
+
+    for (auto& pc : allcontainers)
+    {
+        if (!pc->do_resampling){ continue; }
+
+        pc->resample(m_resampler, timestep);
+    }
+}
+
 void MultiParticleContainer::CheckIonizationProductSpecies()
 {
     for (int i=0; i < static_cast<int>(species_names.size()); i++){
@@ -1060,7 +1072,6 @@ MultiParticleContainer::doQEDSchwinger ()
 // Get cell volume. In 2D the transverse size is
 // chosen by the user in the input file.
     amrex::Geometry const & geom = warpx.Geom(level_0);
-    auto domain_box = geom.Domain();
 #if (AMREX_SPACEDIM == 2)
     const auto dV = geom.CellSize(0) * geom.CellSize(1)
         * m_qed_schwinger_y_size;
