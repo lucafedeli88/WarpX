@@ -22,9 +22,9 @@
 #include <vector>
 
 #if AMREX_SPACEDIM == 2
-        constexpr amrex::Real CORR = 5.0e-7;
+        constexpr amrex::Real LENGTH = 5.0e-7;
 #else
-        constexpr amrex::Real CORR = 1.0;
+        constexpr amrex::Real LENGTH = 1.0;
 #endif
 
 // Aliases =============================
@@ -163,7 +163,7 @@ public:
             amrex::Real,
             BW_dndt_table_view,
             pxr_p::unit_system::SI>(
-                energy, chi_phot, dt*ww*CORR, opt_depth, m_table_view);
+                energy, chi_phot, dt*ww*LENGTH, opt_depth, m_table_view);
 
         return is_out;
     }

@@ -141,20 +141,33 @@ public:
             e_ux, e_uy, e_uz,
             p_ux, p_uy, p_uz);
 
-        constexpr amrex::Real CST = 1.0/CORR;
+        constexpr amrex::Real CST = 1.0/LENGTH;
 
         dst1.m_rdata[PIdx::w][i_dst1] = CST;
         dst2.m_rdata[PIdx::w][i_dst2] = CST;
         src.m_rdata[PIdx::w][i_src] -= CST;
 
-        if(src.m_rdata[PIdx::w][i_src]*CORR <= 1.0)
+        src.m_runtime_rdata[m_opt_depth_runtime_comp][i_src] =
+            m_opt_depth_functor();
+
+        if(src.m_rdata[PIdx::w][i_src]*LENGTH <= 1.0)
             src.m_aos[i_src].id() = -1; //destroy photon after pair generation
     }
+
+void set(QuantumSynchrotronGetOpticalDepth functor, int comp)
+{
+    m_opt_depth_functor = functor;
+    m_opt_depth_runtime_comp = comp;
+}
 
 private:
 
     const BreitWheelerGeneratePairs
     m_generate_functor; /*!< A copy of the functor to generate pairs. It contains only pointers to the lookup tables.*/
+
+    QuantumSynchrotronGetOpticalDepth
+    m_opt_depth_functor;
+    int m_opt_depth_runtime_comp = 0;
 
     GetParticlePosition m_get_position;
     GetExternalEField m_get_externalE;

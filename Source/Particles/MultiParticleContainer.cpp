@@ -1215,6 +1215,9 @@ void MultiParticleContainer::doQedBreitWheeler (int lev,
                                                          Bx[pti], By[pti], Bz[pti],
                                                          pc_source->get_v_galilean());
 
+            Transform.set(m_shr_p_qs_engine->build_optical_depth_functor(),
+                pc_source->particle_runtime_comps["optical_depth_QSR"]);
+
             auto& src_tile = pc_source->ParticlesAt(lev, pti);
             auto& dst_ele_tile = pc_product_ele->ParticlesAt(lev, pti);
             auto& dst_pos_tile = pc_product_pos->ParticlesAt(lev, pti);
