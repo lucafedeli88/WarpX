@@ -1332,5 +1332,234 @@ void MultiParticleContainer::CheckQEDProductSpecies()
     }
 
 }
-
 #endif
+
+void MultiParticleContainer::print_max_chi(int lev,
+                        const MultiFab& Ex,
+                        const MultiFab& Ey,
+                        const MultiFab& Ez,
+                        const MultiFab& Bx,
+                        const MultiFab& By,
+                        const MultiFab& Bz,
+                        const Real ttime) const
+{
+    using namespace amrex;
+
+#ifdef WARPX_QED
+
+    int spec_count = 0;
+    for (const auto& pc : allcontainers){
+        if(!pc->has_breit_wheeler() && !pc->has_quantum_sync())
+            continue;
+
+        amrex::Real chi_max = 0.0;
+
+        constexpr ParticleReal me = PhysConst::m_e;
+
+        constexpr int offset = 0;
+
+        const auto ngE = Ex.nGrow();
+        const auto v_galilean = pc->get_v_galilean();
+        const auto galerkin_interpolation =
+            WarpX::galerkin_interpolation;
+        const auto nox = WarpX::nox;
+        const auto n_rz_azimuthal_modes =
+            WarpX::n_rz_azimuthal_modes;
+
+        const bool is_photon = pc->AmIA<PhysicalSpecies::photon>();
+
+#ifdef AMREX_USE_GPU
+        if (Gpu::inLaunchRegion())
+        {
+            ReduceOps<ReduceOpMax> reduce_op;
+            ReduceData<Real> reduce_data(reduce_op);
+
+            using ReduceTuple = typename decltype(reduce_data)::Type;
+            for (WarpXParIter pti(*pc, lev); pti.isValid(); ++pti)
+            {
+                const auto ux = pti.GetAttribs(PIdx::ux).data();
+                const auto uy = pti.GetAttribs(PIdx::uy).data();
+                const auto uz = pti.GetAttribs(PIdx::uz).data();
+
+                auto get_position  = GetParticlePosition(pti, offset);
+                auto get_externalE = GetExternalEField  (pti, offset);
+                auto get_externalB = GetExternalBField  (pti, offset);
+
+                const auto ex_arr = Ex[pti].array();
+                const auto ey_arr = Ey[pti].array();
+                const auto ez_arr = Ez[pti].array();
+                const auto bx_arr = Bx[pti].array();
+                const auto by_arr = By[pti].array();
+                const auto bz_arr = Bz[pti].array();
+
+                const auto ex_type = Ex[pti].box().ixType();
+                const auto ey_type = Ey[pti].box().ixType();
+                const auto ez_type = Ez[pti].box().ixType();
+                const auto bx_type = Bx[pti].box().ixType();
+                const auto by_type = By[pti].box().ixType();
+                const auto bz_type = Bz[pti].box().ixType();
+
+                const std::array<amrex::Real,3>& dx =
+                    WarpX::CellSize(std::max(lev, 0));
+                GpuArray<amrex::Real, 3> dx_arr =
+                    {dx[0], dx[1], dx[2]};
+
+                amrex::Box box = pti.tilebox();
+                box.grow(ngE);
+                amrex::Real cur_time = WarpX::GetInstance().gett_new(lev);
+                const auto& time_of_last_gal_shift =
+                    WarpX::GetInstance().time_of_last_gal_shift;
+                Real time_shift =
+                    (cur_time - time_of_last_gal_shift);
+                Array<amrex::Real,3> galilean_shift =
+                    { v_galilean[0]*time_shift, v_galilean[1]*time_shift, v_galilean[2]*time_shift };
+
+                const std::array<amrex::Real, 3>& xyzmin =
+                    WarpX::LowerCorner(box, galilean_shift, lev);
+                GpuArray<amrex::Real, 3> xyzmin_arr =
+                    {xyzmin[0], xyzmin[1], xyzmin[2]};
+
+                const auto lo = amrex::lbound(box);
+
+                const long np = pti.numParticles();
+
+                reduce_op.eval(np, reduce_data,
+                    [=] AMREX_GPU_DEVICE (int i) -> ReduceTuple
+                    {
+                        ParticleReal xp, yp, zp;
+                        get_position(i, xp, yp, zp);
+
+                        ParticleReal ex = 0._rt, ey = 0._rt, ez = 0._rt;
+                        get_externalE(i, ex, ey, ez);
+
+                        ParticleReal bx = 0._rt, by = 0._rt, bz = 0._rt;
+                        get_externalB(i, bx, by, bz);
+
+                        doGatherShapeN(xp, yp, zp, ex, ey, ez, bx, by, bz,
+                           ex_arr, ey_arr, ez_arr, bx_arr, by_arr, bz_arr,
+                           ex_type, ey_type, ez_type, bx_type, by_type, bz_type,
+                           dx_arr, xyzmin_arr, lo, n_rz_azimuthal_modes,
+                           nox, galerkin_interpolation);
+
+                        const auto px = ux[i]*me;
+                        const auto py = uy[i]*me;
+                        const auto pz = uz[i]*me;
+
+                        if(is_photon){
+                            return { QedUtils::chi_photon(
+                                px, py, pz, ex, ey, ez, bx, by, bz)};
+                        }
+                        else{
+                            return { QedUtils::chi_ele_pos(
+                                px, py, pz, ex, ey, ez, bx, by, bz)};
+                        }
+                    });
+
+            }
+
+            ReduceTuple hv = reduce_data.value();
+            chi_max = amrex::get<0>(hv);
+        }
+        else
+#endif
+        {
+#ifdef _OPENMP
+#pragma omp parallel reduction(max:chi_max)
+#endif
+            for (WarpXParIter pti(*pc, lev); pti.isValid(); ++pti)
+            {
+                const auto& ux = pti.GetAttribs(PIdx::ux);
+                const auto& uy = pti.GetAttribs(PIdx::uy);
+                const auto& uz = pti.GetAttribs(PIdx::uz);
+
+                auto get_position  = GetParticlePosition(pti, offset);
+                auto get_externalE = GetExternalEField  (pti, offset);
+                auto get_externalB = GetExternalBField  (pti, offset);
+
+                const auto ex_arr = Ex[pti].array();
+                const auto ey_arr = Ey[pti].array();
+                const auto ez_arr = Ez[pti].array();
+                const auto bx_arr = Bx[pti].array();
+                const auto by_arr = By[pti].array();
+                const auto bz_arr = Bz[pti].array();
+
+                const auto ex_type = Ex[pti].box().ixType();
+                const auto ey_type = Ey[pti].box().ixType();
+                const auto ez_type = Ez[pti].box().ixType();
+                const auto bx_type = Bx[pti].box().ixType();
+                const auto by_type = By[pti].box().ixType();
+                const auto bz_type = Bz[pti].box().ixType();
+
+                const std::array<amrex::Real,3>& dx =
+                    WarpX::CellSize(std::max(lev, 0));
+                GpuArray<amrex::Real, 3> dx_arr =
+                    {dx[0], dx[1], dx[2]};
+
+                amrex::Box box = pti.tilebox();
+                box.grow(ngE);
+                amrex::Real cur_time = WarpX::GetInstance().gett_new(lev);
+                const auto& time_of_last_gal_shift =
+                    WarpX::GetInstance().time_of_last_gal_shift;
+                Real time_shift =
+                    (cur_time - time_of_last_gal_shift);
+                Array<amrex::Real,3> galilean_shift =
+                    { v_galilean[0]*time_shift, v_galilean[1]*time_shift, v_galilean[2]*time_shift };
+
+                const std::array<amrex::Real, 3>& xyzmin =
+                    WarpX::LowerCorner(box, galilean_shift, lev);
+                GpuArray<amrex::Real, 3> xyzmin_arr =
+                    {xyzmin[0], xyzmin[1], xyzmin[2]};
+
+                const auto lo = amrex::lbound(box);
+
+                const long np = pti.numParticles();
+                for (unsigned long i = 0; i < np; ++i) {
+                    amrex::ParticleReal xp, yp, zp;
+                    get_position(i, xp, yp, zp);
+
+                    ParticleReal ex = 0._rt, ey = 0._rt, ez = 0._rt;
+                    get_externalE(i, ex, ey, ez);
+
+                    ParticleReal bx = 0._rt, by = 0._rt, bz = 0._rt;
+                    get_externalB(i, bx, by, bz);
+
+                    doGatherShapeN(xp, yp, zp, ex, ey, ez, bx, by, bz,
+                        ex_arr, ey_arr, ez_arr, bx_arr, by_arr, bz_arr,
+                        ex_type, ey_type, ez_type, bx_type, by_type, bz_type,
+                        dx_arr, xyzmin_arr, lo, n_rz_azimuthal_modes,
+                        nox, galerkin_interpolation);
+
+                    const auto px = ux[i]*me;
+                    const auto py = uy[i]*me;
+                    const auto pz = uz[i]*me;
+
+                    if(is_photon){
+                        chi_max = QedUtils::chi_photon(
+                            px, py, pz, ex, ey, ez, bx, by, bz);
+                    }
+                    else{
+                        chi_max = QedUtils::chi_ele_pos(
+                            px, py, pz, ex, ey, ez, bx, by, bz);
+                    }
+                }
+            }
+
+        }
+        ParallelDescriptor::ReduceRealMax(chi_max);
+
+        auto& wpx_instance = WarpX::GetInstance();
+
+        amrex::Print() <<
+            ttime << " " <<
+            "MAX_CHI " <<
+            spec_count << " " <<
+            species_names[spec_count] << " " <<
+            chi_max << "\n";
+        spec_count++;
+    }
+
+#else
+    return;
+#endif
+
+}
