@@ -1361,7 +1361,10 @@ void MultiParticleContainer::print_max_chi(int lev,
     int spec_count = 0;
     for (const auto& pc : allcontainers){
         if(!pc->has_breit_wheeler() && !pc->has_quantum_sync())
+        {
+            spec_count++;
             continue;
+        }
 
         amrex::Real chi_max = 0.0;
 
@@ -1566,7 +1569,9 @@ void MultiParticleContainer::print_max_chi(int lev,
             spec_count << " " <<
             species_names[spec_count] << " " <<
             chi_max << "\n";
-        spec_count++;
+
+            spec_count++;
+
     }
 
 #else
