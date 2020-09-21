@@ -79,6 +79,8 @@ BreitWheelerEngine::init_lookup_tables_from_raw_data (
 
     m_bw_minimum_chi_phot = bw_minimum_chi_phot;
 
+    amrex::Gpu::synchronize();
+
     m_lookup_tables_initialized = true;
 
     return true;
@@ -102,10 +104,10 @@ vector<char> BreitWheelerEngine::export_lookup_tables_data () const
     const auto data_dndt = m_dndt_table.serialize();
     const auto data_pair_prod = m_pair_prod_table.serialize();
 
-    const uint64_t size_fist = data_dndt.size();
+    const uint64_t size_first = data_dndt.size();
 
     vector<char> res{};
-    pxr_sr::put_in(size_fist, res);
+    pxr_sr::put_in(size_first, res);
     for (const auto& tmp : data_dndt)
         pxr_sr::put_in(tmp, res);
     for (const auto& tmp : data_pair_prod)
@@ -141,6 +143,8 @@ void BreitWheelerEngine::compute_lookup_tables (
     m_pair_prod_table.generate(true); //Progress bar is displayed
     m_bw_minimum_chi_phot = bw_minimum_chi_phot;
 
+    amrex::Gpu::synchronize();
+
     m_lookup_tables_initialized = true;
 #else
     amrex::Abort("WarpX was not compiled with table generation support!");
@@ -154,7 +158,7 @@ void BreitWheelerEngine::init_builtin_dndt_table()
     dndt_params.chi_phot_max = 200.0_rt;
     dndt_params.chi_phot_how_many = 64;
 
-    const auto vals = amrex::Gpu::ManagedVector<amrex::Real>{
+    const auto vals = amrex::Gpu::DeviceVector<amrex::Real>{
         -1.34808e+02_rt, -1.16674e+02_rt, -1.01006e+02_rt, -8.74694e+01_rt,
         -7.57742e+01_rt, -6.56699e+01_rt, -5.69401e+01_rt, -4.93981e+01_rt,
         -4.28821e+01_rt, -3.72529e+01_rt, -3.23897e+01_rt, -2.81885e+01_rt,
@@ -172,6 +176,8 @@ void BreitWheelerEngine::init_builtin_dndt_table()
         -2.50493e+00_rt, -2.54261e+00_rt, -2.58143e+00_rt, -2.62127e+00_rt,
         -2.66201e+00_rt, -2.70357e+00_rt, -2.74585e+00_rt, -2.78877e+00_rt};
 
+    amrex::Gpu::synchronize();
+
     m_dndt_table = BW_dndt_table{dndt_params, vals};
 }
 
@@ -183,7 +189,7 @@ void BreitWheelerEngine::init_builtin_pair_prod_table()
     pair_prod_params.chi_phot_how_many = 64;
     pair_prod_params.frac_how_many = 64;
 
-    const auto vals = amrex::Gpu::ManagedVector<amrex::Real>{
+    const auto vals = amrex::Gpu::DeviceVector<amrex::Real>{
         0.00000e+00_rt, 0.00000e+00_rt, 0.00000e+00_rt, 0.00000e+00_rt,
         0.00000e+00_rt, 0.00000e+00_rt, 0.00000e+00_rt, 3.35120e-221_rt,
         1.13067e-188_rt, 2.14228e-163_rt, 3.39948e-143_rt, 1.09215e-126_rt,
@@ -1208,6 +1214,8 @@ void BreitWheelerEngine::init_builtin_pair_prod_table()
         4.47452e-01_rt, 4.52336e-01_rt, 4.57189e-01_rt, 4.62015e-01_rt,
         4.66816e-01_rt, 4.71596e-01_rt, 4.76358e-01_rt, 4.81105e-01_rt,
         4.85839e-01_rt, 4.90564e-01_rt, 4.95284e-01_rt, 5.00000e-01_rt};
+
+    amrex::Gpu::synchronize();
 
     m_pair_prod_table = BW_pair_prod_table{pair_prod_params, vals};
 }

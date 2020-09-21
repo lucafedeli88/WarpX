@@ -165,9 +165,9 @@ PhysicalParticleContainer::PhysicalParticleContainer (AmrCore* amr_core, int isp
 
     // Parse galilean velocity
     ParmParse ppsatd("psatd");
-    ppsatd.query("v_galilean", v_galilean);
+    ppsatd.query("v_galilean", m_v_galilean);
     // Scale the velocity by the speed of light
-    for (int i=0; i<3; i++) v_galilean[i] *= PhysConst::c;
+    for (int i=0; i<3; i++) m_v_galilean[i] *= PhysConst::c;
 
     // build filter functors
     m_do_random_filter  = pp.query("random_fraction", m_random_fraction);
@@ -524,7 +524,7 @@ PhysicalParticleContainer::AddParticles (int lev)
 void
 PhysicalParticleContainer::AddPlasma (int lev, RealBox part_realbox)
 {
-    WARPX_PROFILE("PhysicalParticleContainer::AddPlasma");
+    WARPX_PROFILE("PhysicalParticleContainer::AddPlasma()");
 
     // If no part_realbox is provided, initialize particles in the whole domain
     const Geometry& geom = Geom(lev);
@@ -933,8 +933,8 @@ PhysicalParticleContainer::Evolve (int lev,
                                    Real /*t*/, Real dt, DtType a_dt_type)
 {
 
-    WARPX_PROFILE("PPC::Evolve()");
-    WARPX_PROFILE_VAR_NS("PPC::GatherAndPush", blp_fg);
+    WARPX_PROFILE("PhysicalParticleContainer::Evolve()");
+    WARPX_PROFILE_VAR_NS("PhysicalParticleContainer::Evolve::GatherAndPush", blp_fg);
 
     BL_ASSERT(OnSameGrids(lev,jx));
 
@@ -1410,7 +1410,7 @@ PhysicalParticleContainer::PushP (int lev, Real dt,
                                   const MultiFab& Ex, const MultiFab& Ey, const MultiFab& Ez,
                                   const MultiFab& Bx, const MultiFab& By, const MultiFab& Bz)
 {
-    WARPX_PROFILE("PhysicalParticleContainer::PushP");
+    WARPX_PROFILE("PhysicalParticleContainer::PushP()");
 
     if (do_not_push) return;
 
@@ -1440,7 +1440,7 @@ PhysicalParticleContainer::PushP (int lev, Real dt,
             const auto getExternalE = GetExternalEField(pti);
             const auto getExternalB = GetExternalBField(pti);
 
-            const auto& xyzmin = WarpX::GetInstance().LowerCornerWithGalilean(box,v_galilean,lev);
+            const auto& xyzmin = WarpX::GetInstance().LowerCornerWithGalilean(box,m_v_galilean,lev);
 
             const Dim3 lo = lbound(box);
 
@@ -1544,7 +1544,7 @@ PhysicalParticleContainer::GetParticleSlice (
     const Real t_lab, const Real dt,
     DiagnosticParticles& diagnostic_particles)
 {
-    WARPX_PROFILE("PhysicalParticleContainer::GetParticleSlice");
+    WARPX_PROFILE("PhysicalParticleContainer::GetParticleSlice()");
 
     // Assume that the boost in the positive z direction.
 #if (AMREX_SPACEDIM == 2)
@@ -1800,7 +1800,10 @@ PhysicalParticleContainer::PushPX (WarpXParIter& pti,
     Real cur_time = WarpX::GetInstance().gett_new(lev);
     const auto& time_of_last_gal_shift = WarpX::GetInstance().time_of_last_gal_shift;
     Real time_shift = (cur_time - time_of_last_gal_shift);
-    amrex::Array<amrex::Real,3> galilean_shift = { v_galilean[0]*time_shift, v_galilean[1]*time_shift, v_galilean[2]*time_shift };
+    amrex::Array<amrex::Real,3> galilean_shift ={
+        m_v_galilean[0]*time_shift,
+        m_v_galilean[1]*time_shift,
+        m_v_galilean[2]*time_shift };
     const std::array<Real, 3>& xyzmin = WarpX::LowerCorner(box, galilean_shift, gather_lev);
 
     const Dim3 lo = lbound(box);
@@ -1981,10 +1984,10 @@ PhysicalParticleContainer::getIonizationFunc (const WarpXParIter& pti,
                                               const amrex::FArrayBox& By,
                                               const amrex::FArrayBox& Bz)
 {
-    WARPX_PROFILE("PPC::getIonizationFunc");
+    WARPX_PROFILE("PhysicalParticleContainer::getIonizationFunc()");
 
     return IonizationFilterFunc(pti, lev, ngE, Ex, Ey, Ez, Bx, By, Bz,
-                                v_galilean,
+                                m_v_galilean,
                                 ionization_energies.dataPtr(),
                                 adk_prefactor.dataPtr(),
                                 adk_exp_prefactor.dataPtr(),
@@ -1999,11 +2002,12 @@ void PhysicalParticleContainer::resample (const Resampling& resampler, const int
 
     if (resampler.triggered(timestep, global_numparts))
     {
+        amrex::Print() << "Resampling " << species_name << ".\n";
         for (int lev = 0; lev <= maxLevel(); lev++)
         {
             for (WarpXParIter pti(*this, lev); pti.isValid(); ++pti)
             {
-                resampler(pti);
+                resampler(pti, lev, this);
             }
         }
     }
@@ -2041,14 +2045,14 @@ set_quantum_sync_engine_ptr (std::shared_ptr<QuantumSynchrotronEngine> ptr)
 PhotonEmissionFilterFunc
 PhysicalParticleContainer::getPhotonEmissionFilterFunc ()
 {
-    WARPX_PROFILE("PPC::getPhotonEmissionFunc");
+    WARPX_PROFILE("PhysicalParticleContainer::getPhotonEmissionFunc()");
     return PhotonEmissionFilterFunc{particle_runtime_comps["optical_depth_QSR"]};
 }
 
 PairGenerationFilterFunc
 PhysicalParticleContainer::getPairGenerationFilterFunc ()
 {
-    WARPX_PROFILE("PPC::getPairGenerationFunc");
+    WARPX_PROFILE("PhysicalParticleContainer::getPairGenerationFunc()");
     return PairGenerationFilterFunc{particle_runtime_comps["optical_depth_BW"]};
 }
 
