@@ -1331,6 +1331,8 @@ void MultiParticleContainer::print_max_chi(int lev,
 {
     using namespace amrex;
 
+    WARPX_PROFILE("MultiParticleContainer::print_max_chi()");
+
 #ifdef WARPX_QED
 
     int spec_count = 0;
