@@ -232,6 +232,15 @@ public:
 
     int getSpeciesID (std::string product_str) const;
 
+    void print_max_chi(int lev,
+                    const amrex::MultiFab& Ex,
+                    const amrex::MultiFab& Ey,
+                    const amrex::MultiFab& Ez,
+                    const amrex::MultiFab& Bx,
+                    const amrex::MultiFab& By,
+                    const amrex::MultiFab& Bz,
+                    const amrex::Real ttime) const;
+
 protected:
 
 #ifdef WARPX_QED

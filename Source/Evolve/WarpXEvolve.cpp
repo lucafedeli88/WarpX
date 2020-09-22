@@ -604,6 +604,13 @@ WarpX::PushParticlesandDepose (amrex::Real cur_time)
 void
 WarpX::PushParticlesandDepose (int lev, amrex::Real cur_time, DtType a_dt_type)
 {
+//########################
+    mypc->print_max_chi(lev,
+        *Efield_aux[lev][0],*Efield_aux[lev][1],*Efield_aux[lev][2],
+        *Bfield_aux[lev][0],*Bfield_aux[lev][1],*Bfield_aux[lev][2],
+        cur_time);
+//########################
+
     mypc->Evolve(lev,
                  *Efield_aux[lev][0],*Efield_aux[lev][1],*Efield_aux[lev][2],
                  *Bfield_aux[lev][0],*Bfield_aux[lev][1],*Bfield_aux[lev][2],
