@@ -17,12 +17,7 @@
 #include "Particles/Gather/ScaleFields.H"
 
 #ifdef WARPX_QED
-#    include "Particles/ElementaryProcess/QEDInternals/QuantumSyncEngineWrapper.H"
-#    include "Particles/ElementaryProcess/QEDInternals/BreitWheelerEngineWrapper.H"
-#    include "Particles/ElementaryProcess/QEDInternals/QedChiFunctions.H"
-
-#    include "Particles/ElementaryProcess/QEDPairGeneration.H"
-#    include "Particles/ElementaryProcess/QEDPhotonEmission.H"
+    #include "Particles/ElementaryProcess/QEDSpeciesModule.H"
 #endif
 
 #include <AMReX_IArrayBox.H>
@@ -290,42 +285,7 @@ public:
     void resample (const int timestep) override final;
 
 #ifdef WARPX_QED
-    //Functions decleared in WarpXParticleContainer.H
-    //containers for which QED processes could be relevant
-    //are expected to override these functions
-
-    /**
-     * Tells if this PhysicalParticleContainer has Quantum
-     * Synchrotron process enabled
-     * @return true if process is enabled
-     */
-    bool has_quantum_sync () const override;
-
-    /**
-     * Tells if this PhysicalParticleContainer has Breit
-     * Wheeler process enabled
-     * @return true if process is enabled
-     */
-    bool has_breit_wheeler () const override;
-
-    /**
-     * Acquires a shared smart pointer to a BreitWheelerEngine
-     * @param[in] ptr the pointer
-     */
-    void set_breit_wheeler_engine_ptr
-        (std::shared_ptr<BreitWheelerEngine> ptr) override;
-
-    /**
-     * Acquires a shared smart pointer to a QuantumSynchrotronEngine
-     * @param[in] ptr the pointer
-     */
-    void set_quantum_sync_engine_ptr
-        (std::shared_ptr<QuantumSynchrotronEngine> ptr) override;
-    //__________
-
-    PhotonEmissionFilterFunc getPhotonEmissionFilterFunc ();
-
-    PairGenerationFilterFunc getPairGenerationFilterFunc ();
+    QedSpeciesModule& getQedSpeciesModuleRef();
 #endif
 
 protected:
@@ -349,21 +309,6 @@ protected:
     //When true PhysicalParticleContainer tries to use a pusher including
     //radiation reaction
     bool do_classical_radiation_reaction = false;
-
-#ifdef WARPX_QED
-    // A flag to enable quantum_synchrotron process for leptons
-    bool m_do_qed_quantum_sync = false;
-
-    // A flag to enable breit_wheeler process [photons only!!]
-    bool m_do_qed_breit_wheeler = false;
-
-    // A smart pointer to an instance of a Quantum Synchrotron engine
-    std::shared_ptr<QuantumSynchrotronEngine> m_shr_p_qs_engine;
-
-    // A smart pointer to an instance of a Breit Wheeler engine [photons only!]
-    std::shared_ptr<BreitWheelerEngine> m_shr_p_bw_engine;
-#endif
-
 };
 
 #endif

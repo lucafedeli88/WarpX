@@ -17,8 +17,7 @@
 #include "Particles/Resampling/Resampling.H"
 
 #ifdef WARPX_QED
-#    include "ElementaryProcess/QEDInternals/QuantumSyncEngineWrapper.H"
-#    include "ElementaryProcess/QEDInternals/BreitWheelerEngineWrapper.H"
+#    include "ElementaryProcess/QEDInternals/QEDSpeciesModule.H"
 #endif
 
 #include <AMReX_Particles.H>
@@ -384,21 +383,9 @@ protected:
     int do_back_transformed_diagnostics = 1;
 
 #ifdef WARPX_QED
-    //Species can receive a shared pointer to a QED engine (species for
-    //which this is relevant should override these functions)
-    virtual void
-    set_breit_wheeler_engine_ptr(std::shared_ptr<BreitWheelerEngine>){}
-    virtual void
-    set_quantum_sync_engine_ptr(std::shared_ptr<QuantumSynchrotronEngine>){}
-
-    int m_qed_breit_wheeler_ele_product;
-    std::string m_qed_breit_wheeler_ele_product_name;
-    int m_qed_breit_wheeler_pos_product;
-    std::string m_qed_breit_wheeler_pos_product_name;
-    int m_qed_quantum_sync_phot_product;
-    std::string m_qed_quantum_sync_phot_product_name;
-
+    QedSpeciesModule m_qed_species_module;
 #endif
+
     amrex::Vector<amrex::FArrayBox> local_rho;
     amrex::Vector<amrex::FArrayBox> local_jx;
     amrex::Vector<amrex::FArrayBox> local_jy;

@@ -8,6 +8,7 @@ if(WarpX_QED)
       PRIVATE
         QEDPairGeneration.cpp
         QEDPhotonEmission.cpp
+        QedSpeciesModule.cpp
     )
     add_subdirectory(QEDInternals)
 endif()
