@@ -109,8 +109,10 @@ include(${WarpX_SOURCE_DIR}/cmake/dependencies/openPMD.cmake)
 
 # PSATD
 if(WarpX_PSATD)
-    # FFTW (non-GPU) and cuFFT (GPU)
-    if(NOT WarpX_COMPUTE STREQUAL CUDA)
+    # FFTW (non-GPU) and cuFFT/rocFFT (GPU)
+    if(WarpX_COMPUTE STREQUAL HIP)
+        find_package(rocfft REQUIRED)
+    elseif(NOT WarpX_COMPUTE STREQUAL CUDA)
         find_package(PkgConfig REQUIRED QUIET)
         if(WarpX_PRECISION STREQUAL "DOUBLE")
             pkg_check_modules(fftw3 REQUIRED IMPORTED_TARGET fftw3)
@@ -211,6 +213,8 @@ if(WarpX_PSATD)
     if(WarpX_COMPUTE STREQUAL CUDA)
         # CUDA_ADD_CUFFT_TO_TARGET(WarpX)
         target_link_libraries(WarpX PUBLIC cufft)
+    elseif(WarpX_COMPUTE STREQUAL HIP)
+        target_link_libraries(WarpX PUBLIC roc::rocfft)
     else()
         if(WarpX_PRECISION STREQUAL "DOUBLE")
             target_link_libraries(WarpX PUBLIC PkgConfig::fftw3)
@@ -330,6 +334,27 @@ install(TARGETS ${WarpX_INSTALL_TARGET_NAMES}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
+
+# simplified library alias
+# this is currently expected by Python bindings
+if(WarpX_LIB)
+    if(WarpX_DIMS STREQUAL 3)
+        set(lib_suffix "3d")
+    elseif(WarpX_DIMS STREQUAL 2)
+        set(lib_suffix "2d")
+    elseif(WarpX_DIMS STREQUAL RZ)
+        set(lib_suffix "rz")
+    endif()
+    if(WIN32)
+        set(mod_ext "dll")
+    else()
+        set(mod_ext "so")
+    endif()
+    install(CODE "file(CREATE_LINK
+        $<TARGET_FILE_NAME:shared>
+        ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libwarpx.${lib_suffix}.${mod_ext}
+        COPY_ON_ERROR SYMBOLIC)")
+endif()
 
 # CMake package file for find_package(WarpX::WarpX) in depending projects
 #install(EXPORT WarpXTargets
