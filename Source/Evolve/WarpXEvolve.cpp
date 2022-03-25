@@ -45,7 +45,6 @@
 #include <AMReX_REAL.H>
 #include <AMReX_Utility.H>
 #include <AMReX_Vector.H>
-
 #include <algorithm>
 #include <array>
 #include <memory>
@@ -377,6 +376,18 @@ WarpX::OneStep_nosub (Real cur_time)
     // Deposit current j^{n+1/2}
     // Deposit charge density rho^{n}
 
+    if(istep[0]+1==end_fine_patch_step){
+        auto& warpx = WarpX::GetInstance();
+        SyncCurrent();
+        SyncRho();
+        const int coarse_lev = 0;
+        regrid(coarse_lev, cur_time);
+        mypc->Redistribute();
+        Print() << "Remove the patch" << '\n';
+        warpx.ComputeDt()  ;
+        PrintDtDxDyDz ();
+    }
+
     ExecutePythonCallback("particlescraper");
     ExecutePythonCallback("beforedeposition");
 
@@ -652,11 +663,12 @@ WarpX::OneStep_sub1 (Real curtime)
         amrex::Abort("Electrostatic solver cannot be used with sub-cycling.");
     }
 
-    // TODO: we could save some charge depositions
+    const int fine_lev = finestLevel();
+    const int coarse_lev = 0;
 
     WARPX_ALWAYS_ASSERT_WITH_MESSAGE(finest_level == 1, "Must have exactly two levels");
-    const int fine_lev = 1;
-    const int coarse_lev = 0;
+
+    // TODO: we could save some charge depositions
 
     // i) Push particles and fields on the fine patch (first fine step)
     PushParticlesandDepose(fine_lev, curtime, DtType::FirstHalf);
@@ -789,11 +801,21 @@ WarpX::OneStep_sub1 (Real curtime)
     if ( safe_guard_cells )
         FillBoundaryB(coarse_lev, PatchType::fine, guard_cells.ng_FieldSolver);
 
+
     // Synchronize all nodal points at the end of the timestep
     NodalSync(Efield_fp, Efield_cp);
     NodalSync(Bfield_fp, Bfield_cp);
     if (WarpX::do_dive_cleaning) NodalSync(F_fp, F_cp);
     if (do_pml) NodalSyncPML();
+
+    if(istep[0]+1==end_fine_patch_step){
+        SyncCurrent();
+        SyncRho();
+        regrid(coarse_lev, curtime);
+        mypc->Redistribute();
+        Print() << "Remove the patch" << '\n';
+        do_subcycling=0;
+    }
 }
 
 void

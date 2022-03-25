@@ -381,6 +381,9 @@ WarpX::InitData ()
         printGridSummary(std::cout, 0, finestLevel());
     }
 
+    //finest_level has been initialised
+    WarpX::FinelevInit_flag=true;
+
     // Check that the number of guard cells is smaller than the number of valid cells for all MultiFabs
     // (example: a box with 16 valid cells and 32 guard cells in z will not be considered valid)
     CheckGuardCells();

@@ -166,6 +166,11 @@ Setting up the field mesh
 
     Note: in development; currently allowed value: ``2 2 2``.
 
+* ``warpx.end_fine_patch_step`` (`integer`, default: ``-1``)
+    When using mesh refinement, this can be used to remove the finest level at a given timestep.
+
+    Note: in development; currently, only working on CPU. Moreover, as soon as the fine patch is removed, ``max_step`` is modified so that the final step corresponds to the physical time calculated with the initial timestep duration. Therefore, users are advised to use ``stop_time`` instead.
+
 * ``geometry.dims`` (`string`)
     The dimensions of the simulation geometry.
     Supported values are ``1``, ``2``, ``3``, ``RZ``.
