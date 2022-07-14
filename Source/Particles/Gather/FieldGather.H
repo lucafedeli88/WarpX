@@ -470,7 +470,7 @@ void doGatherShapeN(const GetParticlePosition& getPosition,
     // Loop over particles and gather fields from
     // {e,b}{x,y,z}_arr to {E,B}{xyz}p.
     if (getExternalEB.m_Etype == ExternalFieldInitType::None &&
-        getExternalEB.m_Etype == ExternalFieldInitType::None){
+        getExternalEB.m_Btype == ExternalFieldInitType::None){
         amrex::ParallelFor(
             np_to_gather,
             [=] AMREX_GPU_DEVICE (long ip) {
