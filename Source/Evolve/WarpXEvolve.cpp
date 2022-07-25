@@ -33,6 +33,7 @@
 #include "Utils/WarpXProfilerWrapper.H"
 #include "Utils/WarpXUtil.H"
 
+#include <ablastr/utils/Communication.H>
 #include <ablastr/utils/SignalHandling.H>
 #include <ablastr/warn_manager/WarnManager.H>
 
@@ -818,6 +819,32 @@ WarpX::OneStep_sub1 (Real curtime)
     if ( safe_guard_cells )
         FillBoundaryB(coarse_lev, PatchType::fine, guard_cells.ng_FieldSolver,
                       WarpX::sync_nodal_points);
+    
+    {
+        if (!override_sync_intervals.contains(istep[0]) && !do_pml) return;
+    
+        for (int lev = 0; lev <= WarpX::finest_level; lev++)
+        {
+            const amrex::Periodicity& period = Geom(lev).periodicity();
+            ablastr::utils::communication::OverrideSync(*Bfield_fp[lev][0], WarpX::do_single_precision_comms, period);
+            ablastr::utils::communication::OverrideSync(*Bfield_fp[lev][1], WarpX::do_single_precision_comms, period);
+            ablastr::utils::communication::OverrideSync(*Bfield_fp[lev][2], WarpX::do_single_precision_comms, period);
+            ablastr::utils::communication::OverrideSync(*Efield_fp[lev][0], WarpX::do_single_precision_comms, period);
+            ablastr::utils::communication::OverrideSync(*Efield_fp[lev][1], WarpX::do_single_precision_comms, period);
+            ablastr::utils::communication::OverrideSync(*Efield_fp[lev][2], WarpX::do_single_precision_comms, period);
+    
+            if (lev > 0)
+            {
+                const amrex::Periodicity& cperiod = Geom(lev-1).periodicity();
+                ablastr::utils::communication::OverrideSync(*Bfield_cp[lev][0], WarpX::do_single_precision_comms, cperiod);
+                ablastr::utils::communication::OverrideSync(*Bfield_cp[lev][1], WarpX::do_single_precision_comms, cperiod);
+                ablastr::utils::communication::OverrideSync(*Bfield_cp[lev][2], WarpX::do_single_precision_comms, cperiod);
+                ablastr::utils::communication::OverrideSync(*Efield_cp[lev][0], WarpX::do_single_precision_comms, cperiod);
+                ablastr::utils::communication::OverrideSync(*Efield_cp[lev][1], WarpX::do_single_precision_comms, cperiod);
+                ablastr::utils::communication::OverrideSync(*Efield_cp[lev][2], WarpX::do_single_precision_comms, cperiod);
+            }
+        }
+    }
 
     // Synchronize nodal points at the end of the time step
     if (do_pml) NodalSyncPML();
