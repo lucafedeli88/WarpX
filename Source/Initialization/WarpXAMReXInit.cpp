@@ -7,6 +7,8 @@
 
 #include "Initialization/WarpXAMReXInit.H"
 
+#include "Utils/WarpXUtil.H"
+
 #include <AMReX.H>
 #include <AMReX_ParmParse.H>
 
@@ -66,4 +68,14 @@ warpx_amrex_init (int& argc, char**& argv, bool const build_parm_parse, MPI_Comm
         mpi_comm,
         overwrite_amrex_parser_defaults
     );
+
+    ParseGeometryInput();
+
+    ConvertLabParamsToBoost();
+    ReadBCParams();
+
+#ifdef WARPX_DIM_RZ
+    CheckGriddingForRZSpectral();
+#endif
+
 }

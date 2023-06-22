@@ -12,7 +12,6 @@
 #include "Utils/MPIInitHelpers.H"
 #include "Utils/WarpXProfilerWrapper.H"
 #include "Utils/WarpXrocfftUtil.H"
-#include "Utils/WarpXUtil.H"
 
 #include <ablastr/warn_manager/WarnManager.H>
 #include <ablastr/utils/timer/Timer.H>
@@ -23,18 +22,9 @@ int main(int argc, char* argv[])
 {
     utils::warpx_mpi_init(argc, argv);
 
-    warpx_amrex_init(argc, argv);
-
     utils::rocfft::setup();
 
-    ParseGeometryInput();
-
-    ConvertLabParamsToBoost();
-    ReadBCParams();
-
-#ifdef WARPX_DIM_RZ
-    CheckGriddingForRZSpectral();
-#endif
+    warpx_amrex_init(argc, argv);
 
     {
         WARPX_PROFILE_VAR("main()", pmain);
