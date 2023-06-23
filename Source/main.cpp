@@ -8,7 +8,7 @@
  */
 #include "WarpX.H"
 
-#include "Initialization/WarpXAMReXInit.H"
+#include "Initialization/WarpXInit.H"
 #include "Utils/WarpXProfilerWrapper.H"
 #include "Utils/WarpXrocfftUtil.H"
 
@@ -24,7 +24,8 @@ int main(int argc, char* argv[])
 
     utils::rocfft::setup();
 
-    warpx_amrex_init(argc, argv);
+    warpx::amrex_init(argc, argv);
+    warpx::warpx_init();
 
     {
         WARPX_PROFILE_VAR("main()", pmain);

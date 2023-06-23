@@ -2,7 +2,7 @@ foreach(D IN LISTS WarpX_DIMS)
     warpx_set_suffix_dims(SD ${D})
     target_sources(WarpX_${SD}
       PRIVATE
-        WarpXAMReXInit.cpp
+        WarpXInit.cpp
         InjectorDensity.cpp
         InjectorMomentum.cpp
         PlasmaInjector.cpp

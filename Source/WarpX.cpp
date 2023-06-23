@@ -29,6 +29,7 @@
 #endif // use PSATD ifdef
 #include "FieldSolver/WarpX_FDTD.H"
 #include "Filter/NCIGodfreyFilter.H"
+#include "Initialization/WarpXInit.H"
 #include "Particles/MultiParticleContainer.H"
 #include "Particles/ParticleBoundaryBuffer.H"
 #include "AcceleratorLattice/AcceleratorLattice.H"
@@ -490,7 +491,7 @@ void
 WarpX::ReadParameters ()
 {
     // Ensure that geometry.dims is set properly.
-    CheckDims();
+    //CheckDims(); [TODOTODO]
 
     {
         const ParmParse pp;// Traditionally, max_step and stop_time do not have prefix.
