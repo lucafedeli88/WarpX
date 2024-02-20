@@ -14,6 +14,7 @@
 #include "Utils/TextMsg.H"
 
 #include <AMReX_Algorithm.H>
+#include <AMReX_GpuAtomic.H>
 
 #ifdef AMREX_USE_OMP
 #   include <omp.h>
@@ -278,7 +279,12 @@ void RadiationHandler::add_radiation_contribution
                     constexpr auto inv_c = 1._prt/(PhysConst::c);
                     constexpr auto inv_c2 = 1._prt/(PhysConst::c*PhysConst::c);
 
-                    amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int ip){
+                    WARPX_ALWAYS_ASSERT_WITH_MESSAGE((np-1) == static_cast<int>(np-1), "too many particles!");
+                    const auto np_omegas_detpos = amrex::Box{
+                        amrex::IntVect{0,0,0},
+                        amrex::IntVect{static_cast<int>(np-1), omega_points-1, how_many_det_pos-1}};
+
+                    amrex::ParallelFor(np_omegas_detpos, [=] AMREX_GPU_DEVICE(int ip, int i_om, int i_det){
                         amrex::ParticleReal xp, yp, zp;
                         GetPosition.AsStored(ip,xp, yp, zp);
 
@@ -301,79 +307,62 @@ void RadiationHandler::add_radiation_contribution
 
                         const auto tot_q = q*p_w[ip];
 
-                        for(int i_om=0; i_om < omega_points; ++i_om){
+                        const auto i_omega_over_c = Complex{0.0_prt, 1.0_prt}*p_omegas[i_om]*inv_c;
 
-                            const auto i_omega_over_c = Complex{0.0_prt, 1.0_prt}*p_omegas[i_om]*inv_c;
-                            for (int i_det = 0; i_det < how_many_det_pos; ++i_det){
+                        const auto part_det_x = xp - p_det_pos_x[i_det];
+                        const auto part_det_y = yp - p_det_pos_y[i_det];
+                        const auto part_det_z = zp - p_det_pos_z[i_det];
+                        const auto d_part_det = std::sqrt(
+                            part_det_x*part_det_x + part_det_y*part_det_y + part_det_z*part_det_z);
+                        const auto one_over_d_part_det = 1.0_prt/d_part_det;
 
-                                const auto part_det_x = xp - p_det_pos_x[i_det];
-                                const auto part_det_y = yp - p_det_pos_y[i_det];
-                                const auto part_det_z = zp - p_det_pos_z[i_det];
-                                const auto d_part_det = std::sqrt(
-                                    part_det_x*part_det_x + part_det_y*part_det_y + part_det_z*part_det_z);
-                                const auto one_over_d_part_det = 1.0_prt/d_part_det;
+                        const auto nx = part_det_x*one_over_d_part_det;
+                        const auto ny = part_det_y*one_over_d_part_det;
+                        const auto nz = part_det_z*one_over_d_part_det;
 
-                                const auto nx = part_det_x*one_over_d_part_det;
-                                const auto ny = part_det_y*one_over_d_part_det;
-                                const auto nz = part_det_z*one_over_d_part_det;
+                        //Calculation of 1_beta.n, n corresponds to m_det_direction, the direction of the normal
+                        const auto one_minus_b_dot_n = 1.0_prt - (bx*nx + by*ny + bz*nz);
 
-                                //Calculation of 1_beta.n, n corresponds to m_det_direction, the direction of the normal
-                                const auto one_minus_b_dot_n = 1.0_prt - (bx*nx + by*ny + bz*nz);
+                        const auto n_minus_beta_x = nx - bx;
+                        const auto n_minus_beta_y = ny - by;
+                        const auto n_minus_beta_z = nz - bz;
 
-                                const auto n_minus_beta_x = nx - bx;
-                                const auto n_minus_beta_y = ny - by;
-                                const auto n_minus_beta_z = nz - bz;
+                        //Calculation of nxbeta
+                        const auto n_minus_beta_cross_bp_x = n_minus_beta_y*bpz - n_minus_beta_z*bpy;
+                        const auto n_minus_beta_cross_bp_y = n_minus_beta_z*bpx - n_minus_beta_x*bpz;
+                        const auto n_minus_beta_cross_bp_z = n_minus_beta_x*bpy - n_minus_beta_y*bpx;
 
-                                //Calculation of nxbeta
-                                const auto n_minus_beta_cross_bp_x = n_minus_beta_y*bpz - n_minus_beta_z*bpy;
-                                const auto n_minus_beta_cross_bp_y = n_minus_beta_z*bpx - n_minus_beta_x*bpz;
-                                const auto n_minus_beta_cross_bp_z = n_minus_beta_x*bpy - n_minus_beta_y*bpx;
+                        //Calculation of nxnxbeta
+                        const auto n_cross_n_minus_beta_cross_bp_x = ny*n_minus_beta_cross_bp_z - nz*n_minus_beta_cross_bp_y;
+                        const auto n_cross_n_minus_beta_cross_bp_y = nz*n_minus_beta_cross_bp_x - nx*n_minus_beta_cross_bp_z;
+                        const auto n_cross_n_minus_beta_cross_bp_z = nx*n_minus_beta_cross_bp_y - ny*n_minus_beta_cross_bp_x;
 
-                                //Calculation of nxnxbeta
-                                const auto n_cross_n_minus_beta_cross_bp_x = ny*n_minus_beta_cross_bp_z - nz*n_minus_beta_cross_bp_y;
-                                const auto n_cross_n_minus_beta_cross_bp_y = nz*n_minus_beta_cross_bp_x - nx*n_minus_beta_cross_bp_z;
-                                const auto n_cross_n_minus_beta_cross_bp_z = nx*n_minus_beta_cross_bp_y - ny*n_minus_beta_cross_bp_x;
+                        const auto phase_term = amrex::exp(i_omega_over_c*(c*current_time - d_part_det));
 
-                                const auto phase_term = amrex::exp(i_omega_over_c*(c*current_time - d_part_det));
+                        const auto coeff = tot_q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n);
 
-                                const auto coeff = tot_q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n);
+                        auto cx = coeff*n_cross_n_minus_beta_cross_bp_x;
+                        auto cy = coeff*n_cross_n_minus_beta_cross_bp_y;
+                        auto cz = coeff*n_cross_n_minus_beta_cross_bp_z;
 
-                                auto cx = coeff*n_cross_n_minus_beta_cross_bp_x;
-                                auto cy = coeff*n_cross_n_minus_beta_cross_bp_y;
-                                auto cz = coeff*n_cross_n_minus_beta_cross_bp_z;
+                        // Nyquist limiter
+                        /*if(p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt){
+                            cx = 0.0;
+                            cy = 0.0;
+                            cz = 0.0;
+                        }*/
 
-                                // Nyquist limiter
-                                /*if(p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt){
-                                    cx = 0.0;
-                                    cy = 0.0;
-                                    cz = 0.0;
-                                }*/
-                                
-                                const int ncomp = 3;
-                                const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
-                                const int idx1 = idx0 + 1;
-                                const int idx2 = idx0 + 2;
+                        const int ncomp = 3;
+                        const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
+                        const int idx1 = idx0 + 1;
+                        const int idx2 = idx0 + 2;
 
-#ifdef AMREX_USE_OMP
-                                #pragma omp atomic
-                                p_radiation_data[idx0].m_real += cx.m_real;
-                                #pragma omp atomic
-                                p_radiation_data[idx0].m_imag += cx.m_imag;
-                                #pragma omp atomic
-                                p_radiation_data[idx1].m_real += cy.m_real;
-                                #pragma omp atomic
-                                p_radiation_data[idx1].m_imag += cy.m_imag;
-                                #pragma omp atomic
-                                p_radiation_data[idx2].m_real += cz.m_real;
-                                #pragma omp atomic
-                                p_radiation_data[idx2].m_imag += cz.m_imag;
-#else
-                                p_radiation_data[idx0] += cx;
-                                p_radiation_data[idx1] += cy;
-                                p_radiation_data[idx2] += cz;
-#endif
-                            }
-                        }
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_real, cx.m_real);
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_imag, cx.m_imag);
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_real, cy.m_real);
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_imag, cy.m_imag);
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_real, cz.m_real);
+                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_imag, cz.m_imag);
                     });
 
                 }
