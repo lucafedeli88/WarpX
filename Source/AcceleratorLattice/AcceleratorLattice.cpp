@@ -7,10 +7,12 @@
  * Authors: David Grote, Axel HUebl
  * License: BSD-3-Clause-LBNL
  */
+
 #include "AcceleratorLattice.H"
 #include "LatticeElements/Drift.H"
 #include "LatticeElements/HardEdgedQuadrupole.H"
 #include "LatticeElements/HardEdgedPlasmaLens.H"
+#include "WarpX.H"
 
 #include <AMReX_REAL.H>
 
@@ -76,25 +78,36 @@ AcceleratorLattice::ReadLattice (std::string const & root_name, amrex::ParticleR
 }
 
 void
-AcceleratorLattice::InitElementFinder (int const lev, amrex::BoxArray const & ba, amrex::DistributionMapping const & dm)
+AcceleratorLattice::InitElementFinder (
+    const int lev,
+    const amrex::Real dz, const amrex::Real zmin,
+    const amrex::Real time,
+    const amrex::Real gamma_boost,
+    amrex::BoxArray const & ba, amrex::DistributionMapping const & dm)
 {
     if (m_lattice_defined) {
         m_element_finder = std::make_unique<amrex::LayoutData<LatticeElementFinder>>(ba, dm);
         for (amrex::MFIter mfi(*m_element_finder); mfi.isValid(); ++mfi)
         {
-            (*m_element_finder)[mfi].InitElementFinder(lev, mfi, *this);
+            // The lattice is assumed to extend in the z-direction
+            // Get the number of nodes where indices will be setup
+            const amrex::Box box = a_mfi.tilebox();
+            const auto nz = box.size()[WARPX_ZINDEX];
+            const auto zmin = WarpX::LowerCorner(box, lev, 0._rt)[2];
+
+            (*m_element_finder)[mfi].InitElementFinder(nz, dz, zmin, time, gamma_boost, *this);
         }
     }
 }
 
 void
-AcceleratorLattice::UpdateElementFinder (int const lev) // NOLINT(readability-make-member-function-const)
+AcceleratorLattice::UpdateElementFinder (const amrex::Real zmin, const amrex::Real time) // NOLINT(readability-make-member-function-const)
 {                                                       // Techniquely clang-tidy is correct because
                                                         // m_element_finder is unique_ptr, not const*.
     if (m_lattice_defined) {
         for (amrex::MFIter mfi(*m_element_finder); mfi.isValid(); ++mfi)
         {
-            (*m_element_finder)[mfi].UpdateIndices(lev, mfi, *this);
+            (*m_element_finder)[mfi].UpdateIndices(zmin, time, *this);
         }
     }
 }

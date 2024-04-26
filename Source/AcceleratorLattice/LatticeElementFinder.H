@@ -27,13 +27,18 @@ struct LatticeElementFinder
 {
 
     /**
-     * \brief Initialize the element finder at the level and grid
+     * \brief Initialize the element finder at the level and grid. The lattice is assumed to extend in the z-direction
      *
-     * @param[in] lev the refinement level
-     * @param[in] a_mfi specifies the grid where the finder is defined
+     * @param[in] nz the number of points along z
+     * @param[in] dz the cell size at level lev along z
+     * @param[in] zmin the z component of the lower corner of the box
+     * @param[in] time the current time
+     * @param[in] gamma_boost The Lorentz factor of the boosted frame
      * @param[in] accelerator_lattice a reference to the accelerator lattice at the refinement level
      */
-    void InitElementFinder (int lev, amrex::MFIter const& a_mfi,
+    void InitElementFinder (int nz, amrex::Real dz, amrex::Real zmin,
+                            amrex::Real time,
+                            amrex::Real gamma_boost,
                             AcceleratorLattice const& accelerator_lattice);
 
     /**
@@ -46,11 +51,11 @@ struct LatticeElementFinder
     /**
      * \brief Update the index lookup tables for each element type, filling in the values
      *
-     * @param[in] lev the refinement level
-     * @param[in] a_mfi specifies the grid where the finder is defined
+     * @param[in] zmin the z component of the lower corner of the box
+     * @param[in] time the current time
      * @param[in] accelerator_lattice a reference to the accelerator lattice at the refinement level
      */
-    void UpdateIndices (int lev, amrex::MFIter const& a_mfi,
+    void UpdateIndices (amrex::Real zmin, amrex::Real time,
                         AcceleratorLattice const& accelerator_lattice);
 
     /* Define the location and size of the index lookup table */
@@ -104,11 +109,15 @@ struct LatticeElementFinderDevice
      *
      * @param[in] a_pti specifies the grid where the finder is defined
      * @param[in] a_offset particle index offset needed to access particle info
+     * @param[in] gamma_boost The Lorentz factor of the boosted frame
+     * @param[in] dt_array an array containing the timestep size for each refinement level
      * @param[in] accelerator_lattice a reference to the accelerator lattice at the refinement level
      * @param[in] h_finder The host level instance of the element finder that this is associated with
      */
     void
     InitLatticeElementFinderDevice (WarpXParIter const& a_pti, int a_offset,
+                                    amrex::Real gamma_boost,
+                                    const amrex::Vector<amrex::Real>& dt_array,
                                     AcceleratorLattice const& accelerator_lattice,
                                     LatticeElementFinder const & h_finder);
 

@@ -4,8 +4,9 @@
  *
  * License: BSD-3-Clause-LBNL
  */
-#include "WarpX.H"
 #include "LatticeElementFinder.H"
+
+#include "AcceleratorLattice.H"
 #include "LatticeElements/HardEdgedQuadrupole.H"
 #include "LatticeElements/HardEdgedPlasmaLens.H"
 
@@ -15,24 +16,19 @@
 using namespace amrex::literals;
 
 void
-LatticeElementFinder::InitElementFinder (int const lev, amrex::MFIter const& a_mfi,
+LatticeElementFinder::InitElementFinder (const int nz, const amrex::Real dz, const amrex::Real zmin,
+                                         const amrex::Real time,
+                                         const amrex::Real gamma_boost,
                                          AcceleratorLattice const& accelerator_lattice)
 {
-
-    // The lattice is assumed to extend in the z-direction
-    // Get the number of nodes where indices will be setup
-    const amrex::Box box = a_mfi.tilebox();
-    m_nz = box.size()[WARPX_ZINDEX];
-
-    m_dz = WarpX::CellSize(lev)[2];
-
-    m_gamma_boost = WarpX::gamma_boost;
-    m_uz_boost = std::sqrt(WarpX::gamma_boost*WarpX::gamma_boost - 1._prt)*PhysConst::c;
+    m_nz = nz;
+    m_dz = dz;
+    m_gamma_boost = gamma_boost;
+    m_uz_boost = std::sqrt(gamma_boost * gamma_boost - 1._prt)*PhysConst::c;
 
     AllocateIndices(accelerator_lattice);
 
-    UpdateIndices(lev, a_mfi, accelerator_lattice);
-
+    UpdateIndices(zmin, time, accelerator_lattice);
 }
 
 void
@@ -51,17 +47,12 @@ LatticeElementFinder::AllocateIndices (AcceleratorLattice const& accelerator_lat
 }
 
 void
-LatticeElementFinder::UpdateIndices (int const lev, amrex::MFIter const& a_mfi,
+LatticeElementFinder::UpdateIndices (const amrex::Real zmin, const amrex::Real time,
                                      AcceleratorLattice const& accelerator_lattice)
 {
-    auto& warpx = WarpX::GetInstance();
-
     // Update the location of the index grid.
-    // Note that the current box is used since the box may have been updated since
-    // the initialization in InitElementFinder.
-    const amrex::Box box = a_mfi.tilebox();
-    m_zmin = WarpX::LowerCorner(box, lev, 0._rt)[2];
-    m_time = warpx.gett_new(lev);
+    m_zmin = zmin;
+    m_time = time;
 
     if (accelerator_lattice.h_quad.nelements > 0) {
         setup_lattice_indices(accelerator_lattice.h_quad.d_zs,
@@ -87,12 +78,10 @@ LatticeElementFinder::GetFinderDeviceInstance (WarpXParIter const& a_pti, int co
 
 void
 LatticeElementFinderDevice::InitLatticeElementFinderDevice (WarpXParIter const& a_pti, int const a_offset,
+                                                            const amrex::Real gamma_boost, const amrex::Vector<amrex::Real>& dt_array,
                                                             AcceleratorLattice const& accelerator_lattice,
                                                             LatticeElementFinder const & h_finder)
 {
-
-    auto& warpx = WarpX::GetInstance();
-
     int const lev = a_pti.GetLevel();
 
     m_get_position = GetParticlePosition<PIdx>(a_pti, a_offset);
@@ -100,10 +89,10 @@ LatticeElementFinderDevice::InitLatticeElementFinderDevice (WarpXParIter const& 
     m_ux = attribs[PIdx::ux].dataPtr() + a_offset;
     m_uy = attribs[PIdx::uy].dataPtr() + a_offset;
     m_uz = attribs[PIdx::uz].dataPtr() + a_offset;
-    m_dt = warpx.getdt(lev);
+    m_dt = dt_array[lev];
 
-    m_gamma_boost = WarpX::gamma_boost;
-    m_uz_boost = std::sqrt(WarpX::gamma_boost*WarpX::gamma_boost - 1._prt)*PhysConst::c;
+    m_gamma_boost = gamma_boost;
+    m_uz_boost = std::sqrt(gamma_boost*gamma_boost - 1._prt)*PhysConst::c;
 
     m_zmin = h_finder.m_zmin;
     m_dz = h_finder.m_dz;
