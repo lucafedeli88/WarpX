@@ -399,10 +399,6 @@ void RadiationHandler::add_radiation_contribution
 #endif
                             }
                         }
-                        const int ncomp = 3;
-                        const int idx0 = (0*how_many_det_pos + 0)*ncomp;
-
-                        amrex::Print() << amrex::norm(p_radiation_data[idx0]) << std::endl;
 
                     });
 
