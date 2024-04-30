@@ -363,16 +363,18 @@ void RadiationHandler::add_radiation_contribution
 
                                 const auto coeff = tot_q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n);
 
-                                auto cx = coeff*n_cross_n_minus_beta_cross_bp_x;
-                                auto cy = coeff*n_cross_n_minus_beta_cross_bp_y;
-                                auto cz = coeff*n_cross_n_minus_beta_cross_bp_z;
+                                const amrex::Real flag = (p_omegas[i_om] >= ablastr::constant::math::pi/one_minus_b_dot_n/dt);
+
+                                auto cx = coeff*n_cross_n_minus_beta_cross_bp_x * flag;
+                                auto cy = coeff*n_cross_n_minus_beta_cross_bp_y * flag;
+                                auto cz = coeff*n_cross_n_minus_beta_cross_bp_z * flag;
 
                                 // Nyquist limiter
-                                if(p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt){
-                                    cx = 0.0;
-                                    cy = 0.0;
-                                    cz = 0.0;
-                                }
+                                //if(p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt){
+                                //    cx = 0.0;
+                                //    cy = 0.0;
+                                //    cz = 0.0;
+                                //}
 
                                 const int ncomp = 3;
                                 const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
