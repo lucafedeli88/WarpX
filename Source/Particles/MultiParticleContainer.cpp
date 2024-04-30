@@ -136,7 +136,7 @@ MultiParticleContainer::MultiParticleContainer (AmrCore* amr_core)
             for(int idim=0; idim<AMREX_SPACEDIM; idim++){
                 center[idim] = (lev_0_geom.ProbHi()[idim]+lev_0_geom.ProbLo()[idim])*0.5;
             }
-            m_p_radiation_handler = std::make_unique<RadiationHandler>(center);
+            m_p_radiation_handler = std::make_unique<RadiationHandler>(center, lev_0_geom, WarpX::nox);
             break;
         }
     }

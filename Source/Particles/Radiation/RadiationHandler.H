@@ -28,7 +28,7 @@
 class RadiationHandler
 {
 public:
-    RadiationHandler (const amrex::Array<amrex::Real,3>& center);
+    RadiationHandler (const amrex::Array<amrex::Real,3>& center, const amrex::Geometry& geom, int shape_factor);
 
     /* Perform the calculation of the radiation */
     //void doRadiation (amrex::Real dt, MultiParticleContainer* mypc);
@@ -52,6 +52,9 @@ private:
     amrex::Array<int,2> m_det_pts;
     amrex::Array<amrex::Real,3> m_det_direction;
     amrex::Array<amrex::Real,3> m_det_orientation;
+
+    amrex::Array<amrex::Real,3> m_d;
+    int m_shape_factor;
 
     amrex::Gpu::DeviceVector<amrex::Real> det_pos_x;
     amrex::Gpu::DeviceVector<amrex::Real> det_pos_y;
