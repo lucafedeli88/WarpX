@@ -107,9 +107,9 @@ Theory
    :hidden:
 
    theory/intro
-   theory/picsar_theory
+   theory/pic
    theory/amr
-   theory/PML
+   theory/boundary_conditions
    theory/boosted_frame
    theory/input_output
    theory/collisions
@@ -150,4 +150,5 @@ Epilogue
    :hidden:
 
    glossary
+   governance
    acknowledgements

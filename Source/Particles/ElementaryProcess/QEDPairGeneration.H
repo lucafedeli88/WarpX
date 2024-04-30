@@ -5,8 +5,8 @@
  * License: BSD-3-Clause-LBNL
  */
 
-#ifndef QED_PAIR_GENERATION_H_
-#define QED_PAIR_GENERATION_H_
+#ifndef WARPX_QED_PAIR_GENERATION_H_
+#define WARPX_QED_PAIR_GENERATION_H_
 
 #include "Particles/Gather/FieldGather.H"
 #include "Particles/Gather/GetExternalFields.H"
@@ -167,7 +167,7 @@ public:
             p_ux, p_uy, p_uz,
             engine);
 
-        src.m_aos[i_src].id() = -1; //destroy photon after pair generation
+        src.m_idcpu[i_src] = amrex::ParticleIdCpus::Invalid;  // destroy photon after pair generation
     }
 
 private:
@@ -208,4 +208,4 @@ private:
     amrex::Dim3 m_lo;
 };
 
-#endif //QED_PAIR_GENERATION_H_
+#endif //WARPX_QED_PAIR_GENERATION_H_

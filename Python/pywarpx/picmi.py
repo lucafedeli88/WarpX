@@ -8,13 +8,12 @@
 
 """Classes following the PICMI standard
 """
-from dataclasses import dataclass
 import os
 import re
+from dataclasses import dataclass
 
 import numpy as np
 import periodictable
-
 import picmistandard
 import pywarpx
 
@@ -133,12 +132,31 @@ class Species(picmistandard.PICMI_Species):
     warpx_do_resampling: bool, default=False
         Whether particles will be resampled
 
+    warpx_resampling_min_ppc: int, default=1
+        Cells with fewer particles than this number will be
+        skipped during resampling.
+
     warpx_resampling_trigger_intervals: bool, default=0
         Timesteps at which to resample
 
     warpx_resampling_trigger_max_avg_ppc: int, default=infinity
         Resampling will be done when the average number of
         particles per cell exceeds this number
+
+    warpx_resampling_algorithm: str, default="leveling_thinning"
+        Resampling algorithm to use.
+
+    warpx_resampling_algorithm_delta_ur: float
+        Size of velocity window used for clustering particles during grid-based
+        merging.
+
+    warpx_resampling_algorithm_n_theta: int
+        Number of bins to use in theta when clustering particle velocities
+        during grid-based merging.
+
+    warpx_resampling_algorithm_n_phi: int
+        Number of bins to use in phi when clustering particle velocities
+        during grid-based merging.
     """
     def init(self, kw):
 
@@ -216,13 +234,18 @@ class Species(picmistandard.PICMI_Species):
 
         # Resampling settings
         self.do_resampling = kw.pop('warpx_do_resampling', None)
+        self.resampling_algorithm = kw.pop('warpx_resampling_algorithm', None)
+        self.resampling_min_ppc = kw.pop('warpx_resampling_min_ppc', None)
         self.resampling_trigger_intervals = kw.pop('warpx_resampling_trigger_intervals', None)
         self.resampling_triggering_max_avg_ppc = kw.pop('warpx_resampling_trigger_max_avg_ppc', None)
+        self.resampling_algorithm_delta_ur = kw.pop('warpx_resampling_algorithm_delta_ur', None)
+        self.resampling_algorithm_n_theta = kw.pop('warpx_resampling_algorithm_n_theta', None)
+        self.resampling_algorithm_n_phi = kw.pop('warpx_resampling_algorithm_n_phi', None)
 
-    def initialize_inputs(self, layout,
-                          initialize_self_fields = False,
-                          injection_plane_position = None,
-                          injection_plane_normal_vector = None):
+    def species_initialize_inputs(self, layout,
+                                  initialize_self_fields = False,
+                                  injection_plane_position = None,
+                                  injection_plane_normal_vector = None):
         self.species_number = len(pywarpx.particles.species_names)
 
         if self.name is None:
@@ -256,8 +279,13 @@ class Species(picmistandard.PICMI_Species):
                                              do_not_gather = self.do_not_gather,
                                              random_theta = self.random_theta,
                                              do_resampling=self.do_resampling,
+                                             resampling_algorithm=self.resampling_algorithm,
+                                             resampling_min_ppc=self.resampling_min_ppc,
                                              resampling_trigger_intervals=self.resampling_trigger_intervals,
-                                             resampling_trigger_max_avg_ppc=self.resampling_triggering_max_avg_ppc)
+                                             resampling_trigger_max_avg_ppc=self.resampling_triggering_max_avg_ppc,
+                                             resampling_algorithm_delta_ur=self.resampling_algorithm_delta_ur,
+                                             resampling_algorithm_n_theta=self.resampling_algorithm_n_theta,
+                                             resampling_algorithm_n_phi=self.resampling_algorithm_n_phi)
 
         # add reflection models
         self.species.add_new_attr("reflection_model_xlo(E)", self.reflection_model_xlo)
@@ -274,7 +302,8 @@ class Species(picmistandard.PICMI_Species):
             distributions_is_list = np.iterable(self.initial_distribution)
             layout_is_list = np.iterable(layout)
             if not distributions_is_list and not layout_is_list:
-                self.initial_distribution.initialize_inputs(self.species_number, layout, self.species, self.density_scale, '')
+                self.initial_distribution.distribution_initialize_inputs(self.species_number, layout, self.species,
+                                                                         self.density_scale, '')
             elif distributions_is_list and (layout_is_list or layout is None):
                 assert layout is None or (len(self.initial_distribution) == len(layout)),\
                        Exception('The initial distribution and layout lists must have the same lenth')
@@ -282,8 +311,8 @@ class Species(picmistandard.PICMI_Species):
                 self.species.injection_sources = source_names
                 for i, dist in enumerate(self.initial_distribution):
                     layout_i = layout[i] if layout is not None else None
-                    dist.initialize_inputs(self.species_number, layout_i, self.species,
-                                           self.density_scale, source_names[i])
+                    dist.distribution_initialize_inputs(self.species_number, layout_i, self.species,
+                                                        self.density_scale, source_names[i])
             else:
                 raise Exception('The initial distribution and layout must both be scalars or both be lists')
 
@@ -298,15 +327,15 @@ class Species(picmistandard.PICMI_Species):
 
 picmistandard.PICMI_MultiSpecies.Species_class = Species
 class MultiSpecies(picmistandard.PICMI_MultiSpecies):
-    def initialize_inputs(self, layout,
-                          initialize_self_fields = False,
-                          injection_plane_position = None,
-                          injection_plane_normal_vector = None):
+    def species_initialize_inputs(self, layout,
+                                  initialize_self_fields = False,
+                                  injection_plane_position = None,
+                                  injection_plane_normal_vector = None):
         for species in self.species_instances_list:
-            species.initialize_inputs(layout,
-                                      initialize_self_fields,
-                                      injection_plane_position,
-                                      injection_plane_normal_vector)
+            species.species_initialize_inputs(layout,
+                                              initialize_self_fields,
+                                              injection_plane_position,
+                                              injection_plane_normal_vector)
 
 
 class GaussianBunchDistribution(picmistandard.PICMI_GaussianBunchDistribution):
@@ -314,7 +343,7 @@ class GaussianBunchDistribution(picmistandard.PICMI_GaussianBunchDistribution):
         self.do_symmetrize = kw.pop('warpx_do_symmetrize', None)
         self.symmetrization_order = kw.pop('warpx_symmetrization_order', None)
 
-    def initialize_inputs(self, species_number, layout, species, density_scale, source_name):
+    def distribution_initialize_inputs(self, species_number, layout, species, density_scale, source_name):
         species.add_new_group_attr(source_name, 'injection_style', "gaussian_beam")
         species.add_new_group_attr(source_name, 'x_m', self.centroid_position[0])
         species.add_new_group_attr(source_name, 'y_m', self.centroid_position[1])
@@ -441,7 +470,7 @@ class DensityDistributionBase(object):
 
 
 class UniformFluxDistribution(picmistandard.PICMI_UniformFluxDistribution, DensityDistributionBase):
-    def initialize_inputs(self, species_number, layout, species, density_scale, source_name):
+    def distribution_initialize_inputs(self, species_number, layout, species, density_scale, source_name):
 
         self.fill_in = False
         self.set_mangle_dict()
@@ -465,7 +494,7 @@ class UniformFluxDistribution(picmistandard.PICMI_UniformFluxDistribution, Densi
 
 
 class UniformDistribution(picmistandard.PICMI_UniformDistribution, DensityDistributionBase):
-    def initialize_inputs(self, species_number, layout, species, density_scale, source_name):
+    def distribution_initialize_inputs(self, species_number, layout, species, density_scale, source_name):
 
         self.set_mangle_dict()
         self.set_species_attributes(species, layout, source_name)
@@ -492,7 +521,7 @@ class AnalyticDistribution(picmistandard.PICMI_AnalyticDistribution, DensityDist
     def init(self, kw):
         self.momentum_spread_expressions = kw.pop('warpx_momentum_spread_expressions', [None, None, None])
 
-    def initialize_inputs(self, species_number, layout, species, density_scale, source_name):
+    def distribution_initialize_inputs(self, species_number, layout, species, density_scale, source_name):
 
         self.set_mangle_dict()
         self.set_species_attributes(species, layout, source_name)
@@ -509,7 +538,7 @@ class ParticleListDistribution(picmistandard.PICMI_ParticleListDistribution):
     def init(self, kw):
         pass
 
-    def initialize_inputs(self, species_number, layout, species, density_scale, source_name):
+    def distribution_initialize_inputs(self, species_number, layout, species, density_scale, source_name):
 
         species.add_new_group_attr(source_name, 'injection_style', "multipleparticles")
         species.add_new_group_attr(source_name, 'multiple_particles_pos_x', self.x)
@@ -539,7 +568,7 @@ class PseudoRandomLayout(picmistandard.PICMI_PseudoRandomLayout):
 
 class BinomialSmoother(picmistandard.PICMI_BinomialSmoother):
 
-    def initialize_inputs(self, solver):
+    def smoother_initialize_inputs(self, solver):
         pywarpx.warpx.use_filter = 1
         pywarpx.warpx.use_filter_compensation = bool(np.all(self.compensation))
         if self.n_pass is None:
@@ -602,6 +631,11 @@ class CylindricalGrid(picmistandard.PICMI_CylindricalGrid):
     warpx_end_moving_window_step: int, default=-1
        The timestep at which the moving window ends. If -1, the moving window
        will continue until the end of the simulation.
+
+    warpx_boundary_u_th: dict, default=None
+        If a thermal boundary is used for particles, this dictionary should
+        specify the thermal speed for each species in the form {`<species>`: u_th}.
+        Note: u_th = sqrt(T*q_e/mass)/clight with T in eV.
     """
     def init(self, kw):
         self.max_grid_size = kw.pop('warpx_max_grid_size', 32)
@@ -629,7 +663,10 @@ class CylindricalGrid(picmistandard.PICMI_CylindricalGrid):
         pywarpx.geometry.prob_lo = self.lower_bound  # physical domain
         pywarpx.geometry.prob_hi = self.upper_bound
 
-    def initialize_inputs(self):
+        # if a thermal boundary is used for particles, get the thermal speeds
+        self.thermal_boundary_u_th = kw.pop('warpx_boundary_u_th', None)
+
+    def grid_initialize_inputs(self):
         pywarpx.amr.n_cell = self.number_of_cells
 
         # Maximum allowable size of each subdomain in the problem domain;
@@ -652,6 +689,10 @@ class CylindricalGrid(picmistandard.PICMI_CylindricalGrid):
         pywarpx.boundary.particle_lo = self.lower_boundary_conditions_particles
         pywarpx.boundary.particle_hi = self.upper_boundary_conditions_particles
         pywarpx.boundary.reflect_all_velocities = self.reflect_all_velocities
+
+        if self.thermal_boundary_u_th is not None:
+            for name, val in self.thermal_boundary_u_th.items():
+                pywarpx.boundary.__setattr__(f'{name}.u_th', val)
 
         if self.moving_window_velocity is not None and np.any(np.not_equal(self.moving_window_velocity, 0.)):
             pywarpx.warpx.do_moving_window = 1
@@ -706,6 +747,11 @@ class Cartesian1DGrid(picmistandard.PICMI_Cartesian1DGrid):
     warpx_end_moving_window_step: int, default=-1
        The timestep at which the moving window ends. If -1, the moving window
        will continue until the end of the simulation.
+
+    warpx_boundary_u_th: dict, default=None
+        If a thermal boundary is used for particles, this dictionary should
+        specify the thermal speed for each species in the form {`<species>`: u_th}.
+        Note: u_th = sqrt(T*q_e/mass)/clight with T in eV.
     """
     def init(self, kw):
         self.max_grid_size = kw.pop('warpx_max_grid_size', 32)
@@ -730,7 +776,10 @@ class Cartesian1DGrid(picmistandard.PICMI_Cartesian1DGrid):
         pywarpx.geometry.prob_lo = self.lower_bound  # physical domain
         pywarpx.geometry.prob_hi = self.upper_bound
 
-    def initialize_inputs(self):
+        # if a thermal boundary is used for particles, get the thermal speeds
+        self.thermal_boundary_u_th = kw.pop('warpx_boundary_u_th', None)
+
+    def grid_initialize_inputs(self):
         pywarpx.amr.n_cell = self.number_of_cells
 
         # Maximum allowable size of each subdomain in the problem domain;
@@ -745,6 +794,10 @@ class Cartesian1DGrid(picmistandard.PICMI_Cartesian1DGrid):
         pywarpx.boundary.field_hi = [BC_map[bc] for bc in self.upper_boundary_conditions]
         pywarpx.boundary.particle_lo = self.lower_boundary_conditions_particles
         pywarpx.boundary.particle_hi = self.upper_boundary_conditions_particles
+
+        if self.thermal_boundary_u_th is not None:
+            for name, val in self.thermal_boundary_u_th.items():
+                pywarpx.boundary.__setattr__(f'{name}.u_th', val)
 
         if self.moving_window_velocity is not None and np.any(np.not_equal(self.moving_window_velocity, 0.)):
             pywarpx.warpx.do_moving_window = 1
@@ -807,6 +860,11 @@ class Cartesian2DGrid(picmistandard.PICMI_Cartesian2DGrid):
     warpx_end_moving_window_step: int, default=-1
        The timestep at which the moving window ends. If -1, the moving window
        will continue until the end of the simulation.
+
+    warpx_boundary_u_th: dict, default=None
+        If a thermal boundary is used for particles, this dictionary should
+        specify the thermal speed for each species in the form {`<species>`: u_th}.
+        Note: u_th = sqrt(T*q_e/mass)/clight with T in eV.
     """
     def init(self, kw):
         self.max_grid_size = kw.pop('warpx_max_grid_size', 32)
@@ -833,7 +891,10 @@ class Cartesian2DGrid(picmistandard.PICMI_Cartesian2DGrid):
         pywarpx.geometry.prob_lo = self.lower_bound  # physical domain
         pywarpx.geometry.prob_hi = self.upper_bound
 
-    def initialize_inputs(self):
+        # if a thermal boundary is used for particles, get the thermal speeds
+        self.thermal_boundary_u_th = kw.pop('warpx_boundary_u_th', None)
+
+    def grid_initialize_inputs(self):
         pywarpx.amr.n_cell = self.number_of_cells
 
         # Maximum allowable size of each subdomain in the problem domain;
@@ -850,6 +911,10 @@ class Cartesian2DGrid(picmistandard.PICMI_Cartesian2DGrid):
         pywarpx.boundary.field_hi = [BC_map[bc] for bc in self.upper_boundary_conditions]
         pywarpx.boundary.particle_lo = self.lower_boundary_conditions_particles
         pywarpx.boundary.particle_hi = self.upper_boundary_conditions_particles
+
+        if self.thermal_boundary_u_th is not None:
+            for name, val in self.thermal_boundary_u_th.items():
+                pywarpx.boundary.__setattr__(f'{name}.u_th', val)
 
         if self.moving_window_velocity is not None and np.any(np.not_equal(self.moving_window_velocity, 0.)):
             pywarpx.warpx.do_moving_window = 1
@@ -928,6 +993,11 @@ class Cartesian3DGrid(picmistandard.PICMI_Cartesian3DGrid):
     warpx_end_moving_window_step: int, default=-1
        The timestep at which the moving window ends. If -1, the moving window
        will continue until the end of the simulation.
+
+    warpx_boundary_u_th: dict, default=None
+        If a thermal boundary is used for particles, this dictionary should
+        specify the thermal speed for each species in the form {`<species>`: u_th}.
+        Note: u_th = sqrt(T*q_e/mass)/clight with T in eV.
     """
     def init(self, kw):
         self.max_grid_size = kw.pop('warpx_max_grid_size', 32)
@@ -956,7 +1026,10 @@ class Cartesian3DGrid(picmistandard.PICMI_Cartesian3DGrid):
         pywarpx.geometry.prob_lo = self.lower_bound  # physical domain
         pywarpx.geometry.prob_hi = self.upper_bound
 
-    def initialize_inputs(self):
+        # if a thermal boundary is used for particles, get the thermal speeds
+        self.thermal_boundary_u_th = kw.pop('warpx_boundary_u_th', None)
+
+    def grid_initialize_inputs(self):
         pywarpx.amr.n_cell = self.number_of_cells
 
         # Maximum allowable size of each subdomain in the problem domain;
@@ -975,6 +1048,10 @@ class Cartesian3DGrid(picmistandard.PICMI_Cartesian3DGrid):
         pywarpx.boundary.field_hi = [BC_map[bc] for bc in self.upper_boundary_conditions]
         pywarpx.boundary.particle_lo = self.lower_boundary_conditions_particles
         pywarpx.boundary.particle_hi = self.upper_boundary_conditions_particles
+
+        if self.thermal_boundary_u_th is not None:
+            for name, val in self.thermal_boundary_u_th.items():
+                pywarpx.boundary.__setattr__(f'{name}.u_th', val)
 
         if self.moving_window_velocity is not None and np.any(np.not_equal(self.moving_window_velocity, 0.)):
             pywarpx.warpx.do_moving_window = 1
@@ -1061,9 +1138,9 @@ class ElectromagneticSolver(picmistandard.PICMI_ElectromagneticSolver):
         self.pml_has_particles = kw.pop('warpx_pml_has_particles', None)
         self.do_pml_j_damping = kw.pop('warpx_do_pml_j_damping', None)
 
-    def initialize_inputs(self):
+    def solver_initialize_inputs(self):
 
-        self.grid.initialize_inputs()
+        self.grid.grid_initialize_inputs()
 
         pywarpx.warpx.pml_ncell = self.pml_ncell
 
@@ -1099,7 +1176,7 @@ class ElectromagneticSolver(picmistandard.PICMI_ElectromagneticSolver):
             pywarpx.warpx.cfl = self.cfl
 
         if self.source_smoother is not None:
-            self.source_smoother.initialize_inputs(self)
+            self.source_smoother.smoother_initialize_inputs(self)
 
         pywarpx.warpx.do_dive_cleaning = self.divE_cleaning
         pywarpx.warpx.do_divb_cleaning = self.divB_cleaning
@@ -1134,6 +1211,9 @@ class HybridPICSolver(picmistandard.base._ClassWithInit):
     plasma_resistivity: float or str
         Value or expression to use for the plasma resistivity.
 
+    plasma_hyper_resistivity: float or str
+        Value or expression to use for the plasma hyper-resistivity.
+
     substeps: int, default=100
         Number of substeps to take when updating the B-field.
 
@@ -1141,7 +1221,8 @@ class HybridPICSolver(picmistandard.base._ClassWithInit):
         Function of space and time specifying external (non-plasma) currents.
     """
     def __init__(self, grid, Te=None, n0=None, gamma=None,
-                 n_floor=None, plasma_resistivity=None, substeps=None,
+                 n_floor=None, plasma_resistivity=None,
+                 plasma_hyper_resistivity=None, substeps=None,
                  Jx_external_function=None, Jy_external_function=None,
                  Jz_external_function=None, **kw):
         self.grid = grid
@@ -1152,6 +1233,7 @@ class HybridPICSolver(picmistandard.base._ClassWithInit):
         self.gamma = gamma
         self.n_floor = n_floor
         self.plasma_resistivity = plasma_resistivity
+        self.plasma_hyper_resistivity = plasma_hyper_resistivity
 
         self.substeps = substeps
 
@@ -1159,11 +1241,22 @@ class HybridPICSolver(picmistandard.base._ClassWithInit):
         self.Jy_external_function = Jy_external_function
         self.Jz_external_function = Jz_external_function
 
+        # Handle keyword arguments used in expressions
+        self.user_defined_kw = {}
+        for k in list(kw.keys()):
+            self.user_defined_kw[k] = kw[k]
+            del kw[k]
+
         self.handle_init(kw)
 
-    def initialize_inputs(self):
+    def solver_initialize_inputs(self):
 
-        self.grid.initialize_inputs()
+        # Add the user defined keywords to my_constants
+        # The keywords are mangled if there is a conflicting variable already
+        # defined in my_constants with the same name but different value.
+        self.mangle_dict = pywarpx.my_constants.add_keywords(self.user_defined_kw)
+
+        self.grid.grid_initialize_inputs()
 
         pywarpx.algo.maxwell_solver = self.method
 
@@ -1172,17 +1265,22 @@ class HybridPICSolver(picmistandard.base._ClassWithInit):
         pywarpx.hybridpicmodel.gamma = self.gamma
         pywarpx.hybridpicmodel.n_floor = self.n_floor
         pywarpx.hybridpicmodel.__setattr__(
-            'plasma_resistivity(rho)', self.plasma_resistivity
+            'plasma_resistivity(rho,J)',
+            pywarpx.my_constants.mangle_expression(self.plasma_resistivity, self.mangle_dict)
         )
+        pywarpx.hybridpicmodel.plasma_hyper_resistivity = self.plasma_hyper_resistivity
         pywarpx.hybridpicmodel.substeps = self.substeps
         pywarpx.hybridpicmodel.__setattr__(
-            'Jx_external_grid_function(x,y,z,t)', self.Jx_external_function
+            'Jx_external_grid_function(x,y,z,t)',
+            pywarpx.my_constants.mangle_expression(self.Jx_external_function, self.mangle_dict)
         )
         pywarpx.hybridpicmodel.__setattr__(
-            'Jy_external_grid_function(x,y,z,t)', self.Jy_external_function
+            'Jy_external_grid_function(x,y,z,t)',
+            pywarpx.my_constants.mangle_expression(self.Jy_external_function, self.mangle_dict)
         )
         pywarpx.hybridpicmodel.__setattr__(
-            'Jz_external_grid_function(x,y,z,t)', self.Jz_external_function
+            'Jz_external_grid_function(x,y,z,t)',
+            pywarpx.my_constants.mangle_expression(self.Jz_external_function, self.mangle_dict)
         )
 
 
@@ -1207,9 +1305,9 @@ class ElectrostaticSolver(picmistandard.PICMI_ElectrostaticSolver):
         self.self_fields_verbosity = kw.pop('warpx_self_fields_verbosity', None)
         self.magnetostatic = kw.pop('warpx_magnetostatic', False)
 
-    def initialize_inputs(self):
+    def solver_initialize_inputs(self):
 
-        self.grid.initialize_inputs()
+        self.grid.grid_initialize_inputs()
 
         if self.relativistic:
             pywarpx.warpx.do_electrostatic = 'relativistic'
@@ -1231,7 +1329,7 @@ class ElectrostaticSolver(picmistandard.PICMI_ElectrostaticSolver):
 
 
 class GaussianLaser(picmistandard.PICMI_GaussianLaser):
-    def initialize_inputs(self):
+    def laser_initialize_inputs(self):
         self.laser_number = len(pywarpx.lasers.names) + 1
         if self.name is None:
             self.name = 'laser{}'.format(self.laser_number)
@@ -1256,7 +1354,7 @@ class AnalyticLaser(picmistandard.PICMI_AnalyticLaser):
     def init(self, kw):
         self.mangle_dict = None
 
-    def initialize_inputs(self):
+    def laser_initialize_inputs(self):
         self.laser_number = len(pywarpx.lasers.names) + 1
         if self.name is None:
             self.name = 'laser{}'.format(self.laser_number)
@@ -1279,7 +1377,7 @@ class AnalyticLaser(picmistandard.PICMI_AnalyticLaser):
 
 
 class LaserAntenna(picmistandard.PICMI_LaserAntenna):
-    def initialize_inputs(self, laser):
+    def laser_antenna_initialize_inputs(self, laser):
         laser.laser.position = self.position  # This point is on the laser plane
         if (
             self.normal_vector is not None
@@ -1306,7 +1404,7 @@ class LaserAntenna(picmistandard.PICMI_LaserAntenna):
 
 
 class LoadInitialField(picmistandard.PICMI_LoadGriddedField):
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
         pywarpx.warpx.read_fields_from_path = self.read_fields_from_path
         if self.load_E:
             pywarpx.warpx.E_ext_grid_init_style = 'read_from_file'
@@ -1319,7 +1417,7 @@ class AnalyticInitialField(picmistandard.PICMI_AnalyticAppliedField):
         self.mangle_dict = None
         self.maxlevel_extEMfield_init = kw.pop('warpx_maxlevel_extEMfield_init', None);
 
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
         # Note that lower and upper_bound are not used by WarpX
         pywarpx.warpx.maxlevel_extEMfield_init = self.maxlevel_extEMfield_init;
 
@@ -1346,7 +1444,7 @@ class AnalyticInitialField(picmistandard.PICMI_AnalyticAppliedField):
 
 
 class ConstantAppliedField(picmistandard.PICMI_ConstantAppliedField):
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
         # Note that lower and upper_bound are not used by WarpX
 
         if (self.Ex is not None or
@@ -1366,7 +1464,7 @@ class AnalyticAppliedField(picmistandard.PICMI_AnalyticAppliedField):
     def init(self, kw):
         self.mangle_dict = None
 
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
         # Note that lower and upper_bound are not used by WarpX
 
         if self.mangle_dict is None:
@@ -1392,7 +1490,7 @@ class AnalyticAppliedField(picmistandard.PICMI_AnalyticAppliedField):
 
 
 class Mirror(picmistandard.PICMI_Mirror):
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
         try:
             pywarpx.warpx.num_mirrors
         except AttributeError:
@@ -1411,7 +1509,7 @@ class FieldIonization(picmistandard.PICMI_FieldIonization):
     """
     WarpX only has ADK ionization model implemented.
     """
-    def initialize_inputs(self):
+    def interaction_initialize_inputs(self):
         assert self.model == 'ADK', 'WarpX only has ADK ionization model implemented'
         self.ionized_species.species.do_field_ionization = 1
         self.ionized_species.species.physical_element = self.ionized_species.particle_type
@@ -1449,7 +1547,7 @@ class CoulombCollisions(picmistandard.base._ClassWithInit):
 
         self.handle_init(kw)
 
-    def initialize_inputs(self):
+    def collision_initialize_inputs(self):
         collision = pywarpx.Collisions.newcollision(self.name)
         collision.type = 'pairwisecoulomb'
         collision.species = [species.name for species in self.species]
@@ -1506,7 +1604,7 @@ class MCCCollisions(picmistandard.base._ClassWithInit):
 
         self.handle_init(kw)
 
-    def initialize_inputs(self):
+    def collision_initialize_inputs(self):
         collision = pywarpx.Collisions.newcollision(self.name)
         collision.type = 'background_mcc'
         collision.species = self.species.name
@@ -1520,6 +1618,49 @@ class MCCCollisions(picmistandard.base._ClassWithInit):
             collision.background_temperature = self.background_temperature
         collision.background_mass = self.background_mass
         collision.max_background_density = self.max_background_density
+        collision.ndt = self.ndt
+
+        collision.scattering_processes = self.scattering_processes.keys()
+        for process, kw in self.scattering_processes.items():
+            for key, val in kw.items():
+                if key == 'species':
+                    val = val.name
+                collision.add_new_attr(process+'_'+key, val)
+
+
+class DSMCCollisions(picmistandard.base._ClassWithInit):
+    """
+    Custom class to handle setup of DSMC collisions in WarpX. If collision
+    initialization is added to picmistandard this can be changed to inherit
+    that functionality.
+
+    Parameters
+    ----------
+    name: string
+        Name of instance (used in the inputs file)
+
+    species: species instance
+        The species involved in the collision
+
+    scattering_processes: dictionary
+        The scattering process to use and any needed information
+
+    ndt: integer, optional
+        The collisions will be applied every "ndt" steps. Must be 1 or larger.
+    """
+
+    def __init__(self, name, species, scattering_processes, ndt=None, **kw):
+        self.name = name
+        self.species = species
+        self.scattering_processes = scattering_processes
+        self.ndt = ndt
+
+        self.handle_init(kw)
+
+    def collision_initialize_inputs(self):
+        collision = pywarpx.Collisions.newcollision(self.name)
+        collision.type = 'dsmc'
+        collision.species = [species.name for species in self.species]
         collision.ndt = self.ndt
 
         collision.scattering_processes = self.scattering_processes.keys()
@@ -1598,7 +1739,7 @@ class EmbeddedBoundary(picmistandard.base._ClassWithInit):
 
         self.handle_init(kw)
 
-    def initialize_inputs(self, solver):
+    def embedded_boundary_initialize_inputs(self, solver):
 
         # Add the user defined keywords to my_constants
         # The keywords are mangled if there is a conflicting variable already
@@ -1619,7 +1760,6 @@ class EmbeddedBoundary(picmistandard.base._ClassWithInit):
         pywarpx.eb2.cover_multiple_cuts = self.cover_multiple_cuts
 
         if self.potential is not None:
-            assert isinstance(solver, ElectrostaticSolver), Exception('The potential is only supported with the ElectrostaticSolver')
             expression = pywarpx.my_constants.mangle_expression(self.potential, self.mangle_dict)
             pywarpx.warpx.__setattr__('eb_potential(x,y,z,t)', expression)
 
@@ -1670,7 +1810,7 @@ class PlasmaLens(picmistandard.base._ClassWithInit):
 
         self.handle_init(kw)
 
-    def initialize_inputs(self):
+    def applied_field_initialize_inputs(self):
 
         pywarpx.particles.E_ext_particle_init_style = 'repeated_plasma_lens'
         pywarpx.particles.B_ext_particle_init_style = 'repeated_plasma_lens'
@@ -1762,7 +1902,7 @@ class Simulation(picmistandard.PICMI_Simulation):
     warpx_load_balance_knapsack_factor: float, default=1.24
         (See documentation)
 
-    warpx_load_balance_costs_update: {'heuristic' or 'timers' or 'gpuclock'}, optional
+    warpx_load_balance_costs_update: {'heuristic' or 'timers'}, optional
         (See documentation)
 
     warpx_costs_heuristic_particles_wt: float, optional
@@ -1838,6 +1978,9 @@ class Simulation(picmistandard.PICMI_Simulation):
     warpx_sort_bin_size: list of int, optional (default 1 1 1)
         If `sort_intervals` is activated and `sort_particles_for_deposition` is false, particles are sorted in bins of `sort_bin_size` cells.
         In 2D, only the first two elements are read.
+
+    warpx_used_inputs_file: string, optional
+        The name of the text file that the used input parameters is written to,
     """
 
     # Set the C++ WarpX interface (see _libwarpx.LibWarpX) as an extension to
@@ -1880,6 +2023,7 @@ class Simulation(picmistandard.PICMI_Simulation):
         self.sort_particles_for_deposition = kw.pop('warpx_sort_particles_for_deposition', None)
         self.sort_idx_type = kw.pop('warpx_sort_idx_type', None)
         self.sort_bin_size = kw.pop('warpx_sort_bin_size', None)
+        self.used_inputs_file = kw.pop('warpx_used_inputs_file', None)
 
         self.collisions = kw.pop('warpx_collisions', None)
         self.embedded_boundary = kw.pop('warpx_embedded_boundary', None)
@@ -1932,6 +2076,7 @@ class Simulation(picmistandard.PICMI_Simulation):
         pywarpx.warpx.do_multi_J_n_depositions = self.do_multi_J_n_depositions
         pywarpx.warpx.serialize_initial_conditions = self.serialize_initial_conditions
         pywarpx.warpx.random_seed = self.random_seed
+        pywarpx.warpx.used_inputs_file = self.used_inputs_file
 
         pywarpx.warpx.do_dynamic_scheduling = self.do_dynamic_scheduling
 
@@ -1958,7 +2103,7 @@ class Simulation(picmistandard.PICMI_Simulation):
                 interpolation_order = particle_shape
             pywarpx.algo.particle_shape = interpolation_order
 
-        self.solver.initialize_inputs()
+        self.solver.solver_initialize_inputs()
 
         # Initialize warpx.field_centering_no<x,y,z> and warpx.current_centering_no<x,y,z>
         # if set by the user in the input (need to access grid info from solver attribute)
@@ -1976,33 +2121,33 @@ class Simulation(picmistandard.PICMI_Simulation):
             pywarpx.warpx.current_centering_noz = self.current_centering_order[-1]
 
         for i in range(len(self.species)):
-            self.species[i].initialize_inputs(self.layouts[i],
-                                              self.initialize_self_fields[i],
-                                              self.injection_plane_positions[i],
-                                              self.injection_plane_normal_vectors[i])
+            self.species[i].species_initialize_inputs(self.layouts[i],
+                                                      self.initialize_self_fields[i],
+                                                      self.injection_plane_positions[i],
+                                                      self.injection_plane_normal_vectors[i])
 
         for interaction in self.interactions:
             assert(isinstance(interaction, FieldIonization))
-            interaction.initialize_inputs()
+            interaction.interaction_initialize_inputs()
 
         if self.collisions is not None:
             pywarpx.collisions.collision_names = []
             for collision in self.collisions:
                 pywarpx.collisions.collision_names.append(collision.name)
-                collision.initialize_inputs()
+                collision.collision_initialize_inputs()
 
         if self.embedded_boundary is not None:
-            self.embedded_boundary.initialize_inputs(self.solver)
+            self.embedded_boundary.embedded_boundary_initialize_inputs(self.solver)
 
         for i in range(len(self.lasers)):
-            self.lasers[i].initialize_inputs()
-            self.laser_injection_methods[i].initialize_inputs(self.lasers[i])
+            self.lasers[i].laser_initialize_inputs()
+            self.laser_injection_methods[i].laser_antenna_initialize_inputs(self.lasers[i])
 
         for applied_field in self.applied_fields:
-            applied_field.initialize_inputs()
+            applied_field.applied_field_initialize_inputs()
 
         for diagnostic in self.diagnostics:
-            diagnostic.initialize_inputs()
+            diagnostic.diagnostic_initialize_inputs()
 
         if self.amr_restart:
             pywarpx.amr.restart = self.amr_restart
@@ -2160,7 +2305,7 @@ class FieldDiagnostic(picmistandard.PICMI_FieldDiagnostic, WarpXDiagnosticBase):
         self.particle_fields_to_plot = kw.pop('warpx_particle_fields_to_plot', [])
         self.particle_fields_species = kw.pop('warpx_particle_fields_species', None)
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 
@@ -2182,11 +2327,13 @@ class FieldDiagnostic(picmistandard.PICMI_FieldDiagnostic, WarpXDiagnosticBase):
             E_fields_list = ['Er', 'Et', 'Ez']
             B_fields_list = ['Br', 'Bt', 'Bz']
             J_fields_list = ['Jr', 'Jt', 'Jz']
+            J_displacement_fields_list = ['Jr_displacement', 'Jt_displacement', 'Jz_displacement']
             A_fields_list = ['Ar', 'At', 'Az']
         else:
             E_fields_list = ['Ex', 'Ey', 'Ez']
             B_fields_list = ['Bx', 'By', 'Bz']
             J_fields_list = ['Jx', 'Jy', 'Jz']
+            J_displacement_fields_list = ['Jx_displacement', 'Jy_displacement', 'Jz_displacement']
             A_fields_list = ['Ax', 'Ay', 'Az']
         if self.data_list is not None:
             for dataname in self.data_list:
@@ -2198,6 +2345,9 @@ class FieldDiagnostic(picmistandard.PICMI_FieldDiagnostic, WarpXDiagnosticBase):
                         fields_to_plot.add(field_name)
                 elif dataname == 'J':
                     for field_name in J_fields_list:
+                        fields_to_plot.add(field_name.lower())
+                elif dataname == 'J_displacement':
+                    for field_name in J_displacement_fields_list:
                         fields_to_plot.add(field_name.lower())
                 elif dataname == 'A':
                     for field_name in A_fields_list:
@@ -2211,6 +2361,8 @@ class FieldDiagnostic(picmistandard.PICMI_FieldDiagnostic, WarpXDiagnosticBase):
                 elif dataname in ['rho', 'phi', 'F', 'G', 'divE', 'divB', 'proc_number', 'part_per_cell']:
                     fields_to_plot.add(dataname)
                 elif dataname in J_fields_list:
+                    fields_to_plot.add(dataname.lower())
+                elif dataname in J_displacement_fields_list:
                     fields_to_plot.add(dataname.lower())
                 elif dataname.startswith('rho_'):
                     # Adds rho_species diagnostic
@@ -2298,7 +2450,7 @@ class Checkpoint(picmistandard.base._ClassWithInit, WarpXDiagnosticBase):
 
         self.handle_init(kw)
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 
@@ -2358,7 +2510,7 @@ class ParticleDiagnostic(picmistandard.PICMI_ParticleDiagnostic, WarpXDiagnostic
 
         self.mangle_dict = None
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 
@@ -2378,8 +2530,13 @@ class ParticleDiagnostic(picmistandard.PICMI_ParticleDiagnostic, WarpXDiagnostic
         if self.data_list is not None:
             for dataname in self.data_list:
                 if dataname == 'position':
-                    # --- The positions are alway written out anyway
-                    pass
+                    if pywarpx.geometry.dims != '1':  # because then it's WARPX_DIM_1D_Z
+                        variables.add('x')
+                    if pywarpx.geometry.dims == '3':
+                        variables.add('y')
+                    variables.add('z')
+                    if pywarpx.geometry.dims == 'RZ':
+                        variables.add('theta')
                 elif dataname == 'momentum':
                     variables.add('ux')
                     variables.add('uy')
@@ -2393,8 +2550,24 @@ class ParticleDiagnostic(picmistandard.PICMI_ParticleDiagnostic, WarpXDiagnostic
                     variables.add('Bx')
                     variables.add('By')
                     variables.add('Bz')
-                elif dataname in ['ux', 'uy', 'uz', 'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz']:
-                    variables.add(dataname)
+                elif dataname in ['x', 'y', 'z', 'theta', 'ux', 'uy', 'uz', 'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz', 'Er', 'Et', 'Br', 'Bt']:
+                    if pywarpx.geometry.dims == '1' and (dataname == 'x' or dataname == 'y'):
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available in mode WARPX_DIM_1D_Z"
+                            f"chosen by dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    elif pywarpx.geometry.dims != '3' and dataname == 'y':
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available outside of mode WARPX_DIM_3D"
+                            f"The chosen value was dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    elif pywarpx.geometry.dims != 'RZ' and dataname == 'theta':
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available outside of mode WARPX_DIM_RZ."
+                            f"The chosen value was dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    else:
+                        variables.add(dataname)
 
             # --- Convert the set to a sorted list so that the order
             # --- is the same on all processors.
@@ -2405,7 +2578,7 @@ class ParticleDiagnostic(picmistandard.PICMI_ParticleDiagnostic, WarpXDiagnostic
         if self.species is None:
             species_names = pywarpx.particles.species_names
         elif np.iterable(self.species):
-            species_names = [specie.name for specie in self.species]
+            species_names = [species.name for species in self.species]
         else:
             species_names = [self.species.name]
 
@@ -2473,7 +2646,7 @@ class LabFrameFieldDiagnostic(picmistandard.PICMI_LabFrameFieldDiagnostic,
         self.lower_bound = kw.pop('warpx_lower_bound', None)
         self.upper_bound = kw.pop('warpx_upper_bound', None)
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 
@@ -2572,7 +2745,7 @@ class LabFrameParticleDiagnostic(picmistandard.PICMI_LabFrameParticleDiagnostic,
         self.file_min_digits = kw.pop('warpx_file_min_digits', None)
         self.buffer_size = kw.pop('warpx_buffer_size', None)
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 
@@ -2605,8 +2778,13 @@ class LabFrameParticleDiagnostic(picmistandard.PICMI_LabFrameParticleDiagnostic,
         if self.data_list is not None:
             for dataname in self.data_list:
                 if dataname == 'position':
-                    # --- The positions are alway written out anyway
-                    pass
+                    if pywarpx.geometry.dims != '1':  # because then it's WARPX_DIM_1D_Z
+                        variables.add('x')
+                    if pywarpx.geometry.dims == '3':
+                        variables.add('y')
+                    variables.add('z')
+                    if pywarpx.geometry.dims == 'RZ':
+                        variables.add('theta')
                 elif dataname == 'momentum':
                     variables.add('ux')
                     variables.add('uy')
@@ -2620,8 +2798,24 @@ class LabFrameParticleDiagnostic(picmistandard.PICMI_LabFrameParticleDiagnostic,
                     variables.add('Bx')
                     variables.add('By')
                     variables.add('Bz')
-                elif dataname in ['ux', 'uy', 'uz', 'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz', 'Er', 'Et', 'Br', 'Bt']:
-                    variables.add(dataname)
+                elif dataname in ['x', 'y', 'z', 'theta', 'ux', 'uy', 'uz', 'Ex', 'Ey', 'Ez', 'Bx', 'By', 'Bz', 'Er', 'Et', 'Br', 'Bt']:
+                    if pywarpx.geometry.dims == '1' and (dataname == 'x' or dataname == 'y'):
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available in mode WARPX_DIM_1D_Z"
+                            f"chosen by dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    elif pywarpx.geometry.dims != '3' and dataname == 'y':
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available outside of mode WARPX_DIM_3D"
+                            f"The chosen value was dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    elif pywarpx.geometry.dims != 'RZ' and dataname == 'theta':
+                        raise RuntimeError(
+                            f"The attribute {dataname} is not available outside of mode WARPX_DIM_RZ."
+                            f"The chosen value was dim={pywarpx.geometry.dims} in pywarpx."
+                        )
+                    else:
+                        variables.add(dataname)
 
             # --- Convert the set to a sorted list so that the order
             # --- is the same on all processors.
@@ -2632,9 +2826,9 @@ class LabFrameParticleDiagnostic(picmistandard.PICMI_LabFrameParticleDiagnostic,
         if self.species is None:
             species_names = pywarpx.particles.species_names
         elif np.iterable(self.species):
-            species_names = [specie.name for specie in self.species]
+            species_names = [species.name for species in self.species]
         else:
-            species_names = [species.name]
+            species_names = [self.species.name]
 
         for name in species_names:
             diag = pywarpx.Bucket.Bucket(self.name + '.' + name,
@@ -2864,7 +3058,7 @@ class ReducedDiagnostic(picmistandard.base._ClassWithInit, WarpXDiagnosticBase):
 
         return kw
 
-    def initialize_inputs(self):
+    def diagnostic_initialize_inputs(self):
 
         self.add_diagnostic()
 

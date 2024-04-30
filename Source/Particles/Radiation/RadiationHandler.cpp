@@ -47,11 +47,6 @@ namespace
         const amrex::Array<amrex::Real,2>& theta_range,
         const std::string radiation_type)
     {
-#if defined(WARPX_DIM_3D)
-        const auto ndims = 3;
-#elif defined(WARPX_DIM_XZ)
-        const auto ndims = 2;
-#endif
         const auto how_many = det_points[0]*det_points[1];
 #if defined(WARPX_DIM_3D)
         auto host_det_y = amrex::Vector<amrex::Real>(how_many);
@@ -257,7 +252,7 @@ void RadiationHandler::add_radiation_contribution
             #pragma omp parallel
 #endif
             {
-                
+
                 for (WarpXParIter pti(*pc, lev); pti.isValid(); ++pti)
                 {
 
@@ -271,7 +266,7 @@ void RadiationHandler::add_radiation_contribution
                     const auto index = std::make_pair(pti.index(), pti.LocalTileIndex());
                     auto& part = pc->GetParticles(lev)[index];
                     auto& soa = part.GetStructOfArrays();
- 
+
                     const auto* p_ux_old = soa.GetRealData(pc->GetRealCompIndex("old_u_x")).data();
                     const auto* p_uy_old = soa.GetRealData(pc->GetRealCompIndex("old_u_y")).data();
                     const auto* p_uz_old = soa.GetRealData(pc->GetRealCompIndex("old_u_z")).data();
@@ -311,7 +306,7 @@ void RadiationHandler::add_radiation_contribution
 
                         auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
                         auto const one_over_gamma_c = one_over_gamma*inv_c;
-                     
+
                         const auto bx = ux*one_over_gamma_c;
                         const auto by = uy*one_over_gamma_c;
                         const auto bz = uz*one_over_gamma_c;
@@ -378,7 +373,7 @@ void RadiationHandler::add_radiation_contribution
                                     cy = 0.0;
                                     cz = 0.0;
                                 }
-                                
+
                                 const int ncomp = 3;
                                 const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
                                 const int idx1 = idx0 + 1;
@@ -406,8 +401,6 @@ void RadiationHandler::add_radiation_contribution
                         }
                         const int ncomp = 3;
                         const int idx0 = (0*how_many_det_pos + 0)*ncomp;
-                        const int idx1 = idx0 + 1;
-                        const int idx2 = idx0 + 2;
 
                         amrex::Print() << amrex::norm(p_radiation_data[idx0]) << std::endl;
 
@@ -464,8 +457,8 @@ void RadiationHandler::gather_and_write_radiation(const std::string& filename)
 #if defined(WARPX_DIM_3D)
                 of << omegas_cpu[i_om] << " " << det_pos_theta_cpu[i_det] << " " << det_pos_phi_cpu[i_det] << " " << det_pos_x_cpu[i_det] << " " << det_pos_y_cpu[i_det] << " " << det_pos_z_cpu[i_det]  << " " << radiation_data_cpu[++idx] << "\n";
 #elif defined(WARPX_DIM_XZ)
-                of << omegas_cpu[i_om] << " " << det_pos_phi_cpu[i_det] << " " << det_pos_x_cpu[i_det] << " " << det_pos_z_cpu[i_det]  << " " << radiation_data_cpu[++idx] << "\n";            
-#endif            
+                of << omegas_cpu[i_om] << " " << det_pos_phi_cpu[i_det] << " " << det_pos_x_cpu[i_det] << " " << det_pos_z_cpu[i_det]  << " " << radiation_data_cpu[++idx] << "\n";
+#endif
             }
         }
 
@@ -476,7 +469,7 @@ void RadiationHandler::gather_and_write_radiation(const std::string& filename)
 void RadiationHandler::Integral_overtime(const amrex::Real dt)
 {
     const auto factor = ablastr::constant::SI::q_e*dt/16/std::pow(ablastr::constant::math::pi,3)/PhysConst::ep0/(PhysConst::c);
-  
+
     const auto how_many = m_det_pts[0]*m_det_pts[1];
 
     auto p_radiation_data = m_radiation_data.dataPtr();
@@ -487,6 +480,6 @@ void RadiationHandler::Integral_overtime(const amrex::Real dt)
             const int idx2 = idx0 + 2;
             m_radiation_calculation[idx]=(amrex::norm(p_radiation_data[idx0]) + amrex::norm(p_radiation_data[idx1]) + amrex::norm(p_radiation_data[idx2]))*factor;
             //amrex::Print() << (amrex::norm(p_radiation_data[idx0])+amrex::norm(p_radiation_data[idx1])+amrex::norm(p_radiation_data[idx2])) << std::endl;
-            
+
     }
 }
