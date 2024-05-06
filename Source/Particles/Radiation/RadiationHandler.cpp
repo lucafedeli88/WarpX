@@ -444,8 +444,8 @@ void RadiationHandler::add_radiation_contribution(
 
                     amrex::ParallelFor(
                         np_times_det_pos, [=] AMREX_GPU_DEVICE(int ii){
-                            const int ip  = ii / (np);
-                            const int i_det = ii % (np);
+                            const int ip  = ii / (how_many_det_pos);
+                            const int i_det = ii % (how_many_det_pos);
 
                             amrex::ParticleReal xp, yp, zp;
                             GetPosition.AsStored(ip, xp, yp, zp);
