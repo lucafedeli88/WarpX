@@ -82,6 +82,14 @@ private:
     amrex::Gpu::DeviceVector<amrex::Real> m_det_n_y;
     amrex::Gpu::DeviceVector<amrex::Real> m_det_n_z;
 
+    amrex::Gpu::DeviceVector<amrex::Real> m_b_x;
+    amrex::Gpu::DeviceVector<amrex::Real> m_b_y;
+    amrex::Gpu::DeviceVector<amrex::Real> m_b_z;
+
+    amrex::Gpu::DeviceVector<amrex::Real> m_bp_x;
+    amrex::Gpu::DeviceVector<amrex::Real> m_bp_y;
+    amrex::Gpu::DeviceVector<amrex::Real> m_bp_z;
+
     amrex::Gpu::DeviceVector<ablastr::math::Complex> m_radiation_data;
     amrex::Gpu::DeviceVector<amrex::Real> m_radiation_calculation;
 
