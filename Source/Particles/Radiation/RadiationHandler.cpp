@@ -440,41 +440,6 @@ void RadiationHandler::add_radiation_contribution(
 
                     WARPX_ALWAYS_ASSERT_WITH_MESSAGE((np-1) == static_cast<int>(np-1), "too many particles!");
 
-
-                    m_b_x.resize(np);
-                    m_b_y.resize(np);
-                    m_b_z.resize(np);
-                    m_bp_x.resize(np);
-                    m_bp_y.resize(np);
-                    m_bp_z.resize(np);
-
-                    auto* p_b_x = m_b_x.dataPtr();
-                    auto* p_b_y = m_b_y.dataPtr();
-                    auto* p_b_z = m_b_z.dataPtr();
-                    auto* p_bp_x = m_bp_x.dataPtr();
-                    auto* p_bp_y = m_bp_y.dataPtr();
-                    auto* p_bp_z = m_bp_z.dataPtr();
-
-
-                    amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int ip){
-                        const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
-                        const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
-                        const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
-
-                        auto const u2 = ux*ux + uy*uy + uz*uz;
-
-                        auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
-                        auto const one_over_gamma_c = one_over_gamma*inv_c;
-                        const auto one_over_dt_gamma_c = one_over_gamma_c/dt;
-
-                        p_b_x[ip]  = ux*one_over_gamma_c;
-                        p_b_y[ip]  = uy*one_over_gamma_c;
-                        p_b_z[ip]  = uz*one_over_gamma_c;
-                        p_bp_x[ip] = (p_ux[ip] - p_ux_old[ip])*one_over_dt_gamma_c;
-                        p_bp_y[ip] = (p_uy[ip] - p_uy_old[ip])*one_over_dt_gamma_c;
-                        p_bp_z[ip] = (p_uz[ip] - p_uz_old[ip])*one_over_dt_gamma_c;
-                    });
-
                     const auto np_times_det_pos = np*how_many_det_pos;
 
                     amrex::ParallelFor(
@@ -485,13 +450,22 @@ void RadiationHandler::add_radiation_contribution(
                             amrex::ParticleReal xp, yp, zp;
                             GetPosition.AsStored(ip, xp, yp, zp);
 
-                            const auto bx = p_b_x[ip];
-                            const auto by = p_b_y[ip];
-                            const auto bz = p_b_z[ip];
+                            const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
+                            const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
+                            const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
 
-                            const auto bpx = p_bp_x[ip];
-                            const auto bpy = p_bp_y[ip];
-                            const auto bpz = p_bp_z[ip];
+                            auto const u2 = ux*ux + uy*uy + uz*uz;
+
+                            auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
+                            auto const one_over_gamma_c = one_over_gamma*inv_c;
+                            const auto one_over_dt_gamma_c = one_over_gamma_c/dt;
+
+                            const auto bx  = ux*one_over_gamma_c;
+                            const auto by  = uy*one_over_gamma_c;
+                            const auto bz  = uz*one_over_gamma_c;
+                            const auto bpx = (p_ux[ip] - p_ux_old[ip])*one_over_dt_gamma_c;
+                            const auto bpy = (p_uy[ip] - p_uy_old[ip])*one_over_dt_gamma_c;
+                            const auto bpz = (p_uz[ip] - p_uz_old[ip])*one_over_dt_gamma_c;
 
                             const auto w = p_w[ip];
 
