@@ -16,6 +16,9 @@
 #endif
 #include "Diagnostics/MultiDiagnostics.H"
 #include "Diagnostics/ReducedDiags/MultiReducedDiags.H"
+#ifdef AMREX_USE_EB
+#    include "EmbeddedBoundary/WarpXInitEB.H"
+#endif
 #include "FieldSolver/Fields.H"
 #include "FieldSolver/FiniteDifferenceSolver/MacroscopicProperties/MacroscopicProperties.H"
 #include "FieldSolver/FiniteDifferenceSolver/HybridPICModel/HybridPICModel.H"
@@ -1292,9 +1295,9 @@ void WarpX::InitializeEBGridData (int lev)
             auto const eb_fact = fieldEBFactory(lev);
 
             ComputeEdgeLengths(m_edge_lengths[lev], eb_fact);
-            ScaleEdges(m_edge_lengths[lev], CellSize(lev));
+            warpx::embedded_boundary::ScaleEdges(m_edge_lengths[lev], CellSize(lev));
             ComputeFaceAreas(m_face_areas[lev], eb_fact);
-            ScaleAreas(m_face_areas[lev], CellSize(lev));
+            warpx::embedded_boundary::ScaleAreas(m_face_areas[lev], CellSize(lev));
 
             if (WarpX::electromagnetic_solver_id == ElectromagneticSolverAlgo::ECT) {
                 MarkCells();

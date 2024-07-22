@@ -1130,16 +1130,6 @@ public:
                                   const amrex::EBFArrayBoxFactory& eb_fact);
 
     /**
-    * \brief Scale the edges lengths by the mesh width to obtain the real lengths.
-    */
-    static void ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
-                            const std::array<amrex::Real,3>& cell_size);
-    /**
-    * \brief Scale the edges areas by the mesh width to obtain the real areas.
-    */
-    static void ScaleAreas (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
-                            const std::array<amrex::Real,3>& cell_size);
-    /**
     * \brief Initialize information for cell extensions.
     *        The flags convention for m_flag_info_face is as follows
     *          - 0 for unstable cells

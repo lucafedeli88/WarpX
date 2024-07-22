@@ -5,9 +5,11 @@
  * License: BSD-3-Clause-LBNL
  */
 
-#include "WarpX.H"
+#  include "WarpX.H"
 
 #ifdef AMREX_USE_EB
+
+#  include "WarpXInit.H"
 #  include "Utils/Parser/ParserUtils.H"
 #  include "Utils/TextMsg.H"
 
@@ -43,6 +45,9 @@
 #endif
 
 #ifdef AMREX_USE_EB
+
+using namespace warpx::embedded_boundary;
+
 namespace {
     class ParserIF
         : public amrex::GPUable
@@ -240,7 +245,7 @@ WarpX::ComputeFaceAreas (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face
 
 
 void
-WarpX::ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
+ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
                    const std::array<amrex::Real,3>& cell_size) {
     BL_PROFILE("ScaleEdges");
 
@@ -265,7 +270,7 @@ WarpX::ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengt
 }
 
 void
-WarpX::ScaleAreas(std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
+ScaleAreas(std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
                   const std::array<amrex::Real,3>& cell_size) {
     BL_PROFILE("ScaleAreas");
 
