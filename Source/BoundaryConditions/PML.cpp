@@ -10,6 +10,9 @@
 
 #include "BoundaryConditions/PML.H"
 #include "BoundaryConditions/PMLComponent.H"
+#ifdef AMREX_USE_EB
+#    include "EmbeddedBoundary/WarpXInitEB.H"
+#endif
 #include "FieldSolver/Fields.H"
 #ifdef WARPX_USE_FFT
 #   include "FieldSolver/SpectralSolver/SpectralFieldData.H"
@@ -714,8 +717,8 @@ PML::PML (const int lev, const BoxArray& grid_ba,
 
         auto const eb_fact = fieldEBFactory();
 
-        WarpX::ComputeEdgeLengths(pml_edge_lengths, eb_fact);
-        WarpX::ScaleEdges(pml_edge_lengths, WarpX::CellSize(lev));
+        warpx::embedded_boundary::ComputeEdgeLengths(pml_edge_lengths, eb_fact);
+        warpx::embedded_boundary::ScaleEdges(pml_edge_lengths, WarpX::CellSize(lev));
 
     }
 #endif

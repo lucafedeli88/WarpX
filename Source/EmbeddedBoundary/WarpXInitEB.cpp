@@ -31,11 +31,9 @@
 #  include <AMReX_IntVect.H>
 #  include <AMReX_Loop.H>
 #  include <AMReX_MFIter.H>
-#  include <AMReX_MultiFab.H>
 #  include <AMReX_iMultiFab.H>
 #  include <AMReX_ParmParse.H>
 #  include <AMReX_Parser.H>
-#  include <AMReX_REAL.H>
 #  include <AMReX_SPACE.H>
 #  include <AMReX_Vector.H>
 
@@ -117,8 +115,9 @@ WarpX::InitEB ()
 
 #ifdef AMREX_USE_EB
 void
-WarpX::ComputeEdgeLengths (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
-                           const amrex::EBFArrayBoxFactory& eb_fact) {
+ComputeEdgeLengths (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
+                           const amrex::EBFArrayBoxFactory& eb_fact)
+{
     BL_PROFILE("ComputeEdgeLengths");
 
     auto const &flags = eb_fact.getMultiEBCellFlagFab();
@@ -183,8 +182,9 @@ WarpX::ComputeEdgeLengths (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& ed
 
 
 void
-WarpX::ComputeFaceAreas (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
-                         const amrex::EBFArrayBoxFactory& eb_fact) {
+ComputeFaceAreas (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
+                         const amrex::EBFArrayBoxFactory& eb_fact)
+{
     BL_PROFILE("ComputeFaceAreas");
 
     auto const &flags = eb_fact.getMultiEBCellFlagFab();
@@ -246,7 +246,8 @@ WarpX::ComputeFaceAreas (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face
 
 void
 ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
-                   const std::array<amrex::Real,3>& cell_size) {
+                   const std::array<amrex::Real,3>& cell_size)
+{
     BL_PROFILE("ScaleEdges");
 
     for (amrex::MFIter mfi(*edge_lengths[0]); mfi.isValid(); ++mfi) {
@@ -271,7 +272,8 @@ ScaleEdges (std::array< std::unique_ptr<amrex::MultiFab>, 3 >& edge_lengths,
 
 void
 ScaleAreas(std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
-                  const std::array<amrex::Real,3>& cell_size) {
+                  const std::array<amrex::Real,3>& cell_size)
+{
     BL_PROFILE("ScaleAreas");
 
     amrex::Real full_area;
@@ -314,35 +316,35 @@ ScaleAreas(std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
 
 
 void
-WarpX::MarkCells(){
+EmbeddedBoundary::MarkCells(const std::array<amrex::Real,3>& cell_size, const int max_level)
+{
 #ifndef WARPX_DIM_RZ
-    auto const &cell_size = CellSize(maxLevel());
 
 #ifdef WARPX_DIM_3D
     for (int idim = 0; idim < AMREX_SPACEDIM; ++idim) {
 #elif defined(WARPX_DIM_XZ)
-    m_flag_info_face[maxLevel()][0]->setVal(0.);
-    m_flag_info_face[maxLevel()][2]->setVal(0.);
-    m_flag_ext_face[maxLevel()][0]->setVal(0.);
-    m_flag_ext_face[maxLevel()][2]->setVal(0.);
+    m_flag_info_face[max_level][0]->setVal(0.);
+    m_flag_info_face[max_level][2]->setVal(0.);
+    m_flag_ext_face[max_level][0]->setVal(0.);
+    m_flag_ext_face[max_level][2]->setVal(0.);
     // In 2D we change the extrema of the for loop so that we only have the case idim=1
     for (int idim = 1; idim < AMREX_SPACEDIM; ++idim) {
 #else
     WARPX_ABORT_WITH_MESSAGE(
         "MarkCells: Only implemented in 2D3V and 3D3V");
 #endif
-        for (amrex::MFIter mfi(*Bfield_fp[maxLevel()][idim]); mfi.isValid(); ++mfi) {
-            //amrex::Box const &box = mfi.tilebox(m_face_areas[maxLevel()][idim]->ixType().toIntVect());
-            const amrex::Box& box = mfi.tilebox(m_face_areas[maxLevel()][idim]->ixType().toIntVect(),
-                                                m_face_areas[maxLevel()][idim]->nGrowVect() );
+        for (amrex::MFIter mfi(*Bfield_fp[max_level][idim]); mfi.isValid(); ++mfi) {
+            //amrex::Box const &box = mfi.tilebox(m_face_areas[max_level][idim]->ixType().toIntVect());
+            const amrex::Box& box = mfi.tilebox(m_face_areas[max_level][idim]->ixType().toIntVect(),
+                                                m_face_areas[max_level][idim]->nGrowVect() );
 
-            auto const &S = m_face_areas[maxLevel()][idim]->array(mfi);
-            auto const &flag_info_face = m_flag_info_face[maxLevel()][idim]->array(mfi);
-            auto const &flag_ext_face = m_flag_ext_face[maxLevel()][idim]->array(mfi);
-            const auto &lx = m_edge_lengths[maxLevel()][0]->array(mfi);
-            const auto &ly = m_edge_lengths[maxLevel()][1]->array(mfi);
-            const auto &lz = m_edge_lengths[maxLevel()][2]->array(mfi);
-            auto const &mod_areas_dim = m_area_mod[maxLevel()][idim]->array(mfi);
+            auto const &S = m_face_areas[max_level][idim]->array(mfi);
+            auto const &flag_info_face = m_flag_info_face[max_level][idim]->array(mfi);
+            auto const &flag_ext_face = m_flag_ext_face[max_level][idim]->array(mfi);
+            const auto &lx = m_edge_lengths[max_level][0]->array(mfi);
+            const auto &ly = m_edge_lengths[max_level][1]->array(mfi);
+            const auto &lz = m_edge_lengths[max_level][2]->array(mfi);
+            auto const &mod_areas_dim = m_area_mod[max_level][idim]->array(mfi);
 
             const amrex::Real dx = cell_size[0];
             const amrex::Real dy = cell_size[1];

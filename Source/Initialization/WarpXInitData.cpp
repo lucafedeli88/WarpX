@@ -1294,9 +1294,9 @@ void WarpX::InitializeEBGridData (int lev)
 
             auto const eb_fact = fieldEBFactory(lev);
 
-            ComputeEdgeLengths(m_edge_lengths[lev], eb_fact);
+            warpx::embedded_boundary::ComputeEdgeLengths(m_edge_lengths[lev], eb_fact);
             warpx::embedded_boundary::ScaleEdges(m_edge_lengths[lev], CellSize(lev));
-            ComputeFaceAreas(m_face_areas[lev], eb_fact);
+            warpx::embedded_boundary::ComputeFaceAreas(m_face_areas[lev], eb_fact);
             warpx::embedded_boundary::ScaleAreas(m_face_areas[lev], CellSize(lev));
 
             if (WarpX::electromagnetic_solver_id == ElectromagneticSolverAlgo::ECT) {
