@@ -51,6 +51,8 @@ namespace warpx::embedded_boundary
 
     public:
 
+        EmbeddedBoundary(int nlevs_max);
+
         /**
         * \brief Initialize information for cell extensions.
         *        The flags convention for m_flag_info_face is as follows

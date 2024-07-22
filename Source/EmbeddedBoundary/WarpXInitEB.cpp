@@ -316,6 +316,21 @@ ScaleAreas(std::array< std::unique_ptr<amrex::MultiFab>, 3 >& face_areas,
 
 
 void
+EmbeddedBoundary::EmbeddedBoundary(const int nlevs_max)
+{
+    m_field_factory.resize(nlevs_max);
+
+    for (int lev = 0; lev < nlevs_max; ++lev)
+    {
+        int max_guard = guard_cells.ng_FieldSolver.max();
+        m_field_factory[lev] = amrex::makeEBFabFactory(
+            Geom(lev), ba, dm,
+            {max_guard, max_guard, max_guard},
+            amrex::EBSupport::full);
+    }
+}
+
+void
 EmbeddedBoundary::MarkCells(const std::array<amrex::Real,3>& cell_size, const int max_level)
 {
 #ifndef WARPX_DIM_RZ

@@ -406,7 +406,9 @@ WarpX::WarpX ()
     costs.resize(nlevs_max);
     load_balance_efficiency.resize(nlevs_max);
 
-    m_field_factory.resize(nlevs_max);
+#ifdef AMREX_USE_EB
+    m_embedded_boundary = warpx:embedded_boundary::EmbeddedBoundary(nlevs_max);
+#endif
 
     if (em_solver_medium == MediumForEM::Macroscopic) {
         // create object for macroscopic solver
@@ -2163,17 +2165,6 @@ WarpX::AllocLevelData (int lev, const BoxArray& ba, const DistributionMapping& d
         this->refRatio(),
         use_filter,
         bilinear_filter.stencil_length_each_dir);
-
-
-#ifdef AMREX_USE_EB
-        int max_guard = guard_cells.ng_FieldSolver.max();
-        m_field_factory[lev] = amrex::makeEBFabFactory(Geom(lev), ba, dm,
-                                                       {max_guard, max_guard, max_guard},
-                                                       amrex::EBSupport::full);
-#else
-        m_field_factory[lev] = std::make_unique<FArrayBoxFactory>();
-#endif
-
 
     if (mypc->nSpeciesDepositOnMainGrid() && n_current_deposition_buffer == 0) {
         n_current_deposition_buffer = 1;
