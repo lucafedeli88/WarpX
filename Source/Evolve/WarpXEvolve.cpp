@@ -126,10 +126,8 @@ WarpX::Evolve (int numsteps)
 
         ExecutePythonCallback("particleinjection");
 
-        // TODO: move out
-        if (evolve_scheme == EvolveScheme::ImplicitPicard ||
-            evolve_scheme == EvolveScheme::SemiImplicitPicard) {
-            OneStep_ImplicitPicard(cur_time);
+        if (m_implicit_solver) {
+            m_implicit_solver->OneStep(cur_time, dt[0], step);
         }
         else if ( electromagnetic_solver_id == ElectromagneticSolverAlgo::None ||
              electromagnetic_solver_id == ElectromagneticSolverAlgo::HybridPIC )
@@ -145,7 +143,7 @@ WarpX::Evolve (int numsteps)
             OneStep_multiJ(cur_time);
         }
         // Electromagnetic case: no subcycling or no mesh refinement
-        else if (do_subcycling == 0 || finest_level == 0)
+        else if ( !do_subcycling || (finest_level == 0))
         {
             OneStep_nosub(cur_time);
             // E: guard cells are up-to-date
@@ -153,7 +151,7 @@ WarpX::Evolve (int numsteps)
             // F: guard cells are NOT up-to-date
         }
         // Electromagnetic case: subcycling with one level of mesh refinement
-        else if (do_subcycling == 1 && finest_level == 1)
+        else if (do_subcycling && (finest_level == 1))
         {
             OneStep_sub1(cur_time);
         }
@@ -209,6 +207,7 @@ WarpX::Evolve (int numsteps)
 
         // sync up time
         for (int i = 0; i <= max_level; ++i) {
+            t_old[i] = t_new[i];
             t_new[i] = cur_time;
         }
         multi_diags->FilterComputePackFlush( step, false, true );
@@ -249,7 +248,12 @@ WarpX::Evolve (int numsteps)
                     // This is currently a lab frame calculation.
                     ComputeMagnetostaticField();
                 }
-                AddExternalFields();
+                // Since the fields were reset above, the external fields are added
+                // back on to the fine patch fields. This make it so that the net fields
+                // are the sum of the field solution and any external field.
+                for (int lev = 0; lev <= max_level; ++lev) {
+                    AddExternalFields(lev);
+                }
             } else if (electromagnetic_solver_id == ElectromagneticSolverAlgo::HybridPIC) {
                 // Hybrid-PIC case:
                 // The particles are now at p^{n+1/2} and x^{n+1}. The fields
@@ -311,6 +315,9 @@ WarpX::Evolve (int numsteps)
         multi_diags->FilterComputePackFlushLastTimestep( istep[0] );
         if (m_exit_loop_due_to_interrupt_signal) { ExecutePythonCallback("onbreaksignal"); }
     }
+
+    amrex::Print() <<
+        ablastr::warn_manager::GetWMInstance().PrintGlobalWarnings("THE END");
 }
 
 /* /brief Perform one PIC iteration, without subcycling

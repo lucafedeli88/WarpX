@@ -123,7 +123,7 @@ public:
         void labelOnSphericalVelocityGrid (const amrex::ParticleReal ux[],
                                            const amrex::ParticleReal uy[],
                                            const amrex::ParticleReal uz[],
-                                           const unsigned int indices[],
+                                           const int indices[],
                                            int bin_array[], int index_array[],
                                            const int cell_start, const int cell_stop ) const
         {
@@ -151,7 +151,7 @@ public:
         void labelOnCartesianVelocityGrid (const amrex::ParticleReal ux[],
                                            const amrex::ParticleReal uy[],
                                            const amrex::ParticleReal uz[],
-                                           const unsigned int indices[],
+                                           const int indices[],
                                            int bin_array[], int index_array[],
                                            const int cell_start, const int cell_stop ) const
         {
@@ -168,7 +168,7 @@ public:
 
         AMREX_GPU_HOST_DEVICE AMREX_FORCE_INLINE
         void operator() (const amrex::ParticleReal ux[], const amrex::ParticleReal uy[],
-                         const amrex::ParticleReal uz[], const unsigned int indices[],
+                         const amrex::ParticleReal uz[], const int indices[],
                          int bin_array[], int index_array[],
                          const int cell_start, const int cell_stop) const
         {
@@ -200,5 +200,6 @@ private:
     int m_ntheta, m_nphi;
     amrex::ParticleReal m_delta_ur;
     amrex::Vector<amrex::ParticleReal> m_delta_u;
+    amrex::ParticleReal m_cluster_weight = std::numeric_limits<amrex::ParticleReal>::max();
 };
 #endif // WARPX_VELOCITY_COINCIDENCE_THINNING_H_

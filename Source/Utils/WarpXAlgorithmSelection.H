@@ -9,8 +9,12 @@
 #define WARPX_UTILS_WARPXALGORITHMSELECTION_H_
 
 #include <AMReX_BaseFwd.H>
+#include <ablastr/utils/Enums.H>
 
 #include <string>
+
+using namespace ablastr::utils::enums;  // NOLINT(google-global-names-in-headers)
+
 
 /**
   * \brief struct to determine the computational medium, i.e., vacuum or material/macroscopic
@@ -29,8 +33,8 @@ struct MediumForEM {
 struct EvolveScheme {
     enum {
         Explicit = 0,
-        ImplicitPicard = 1,
-        SemiImplicitPicard = 2
+        ThetaImplicitEM = 1,
+        SemiImplicitEM = 2
     };
 };
 
@@ -45,20 +49,6 @@ struct MacroscopicSolverAlgo {
         BackwardEuler = 0,
         LaxWendroff = 1
     };
-};
-
-struct GridType {
-    enum {
-        Collocated = 0,
-        Staggered = 1,
-        Hybrid = 2
-    };
-};
-
-enum struct PatchType
-{
-    fine,
-    coarse
 };
 
 struct ElectromagneticSolverAlgo {
