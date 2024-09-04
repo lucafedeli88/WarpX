@@ -18,6 +18,7 @@
 
 #include <AMReX_Algorithm.H>
 #include <AMReX_Math.H>
+#include <AMReX_Reduce.H>
 
 #ifdef AMREX_USE_OMP
 #   include <omp.h>
@@ -302,6 +303,11 @@ RadiationHandler::RadiationHandler(const amrex::Array<amrex::Real,3>& center, co
     pp_radiation.queryarr("output_intervals", radiation_output_intervals_string);
     m_output_intervals_parser = utils::parser::IntervalsParser(radiation_output_intervals_string);
 
+    if (auto gamma_range = std::vector<amrex::Real>(2);
+        queryArrWithParser(pp_radiation, "gamma_range", gamma_range)){
+        m_gamma_range = std::array<amrex::Real,2>{gamma_range[0], gamma_range[1]};
+    }
+
     // Cell sizes
     m_d[0] = geom.CellSize(0);
     m_d[1] = geom.CellSize(1);
@@ -453,106 +459,276 @@ void RadiationHandler::add_radiation_contribution(
                         amrex::ignore_unused(p_det_n_y);
 #endif
 
-
+                    if (!m_gamma_range.has_value()){
 #if defined(WARPX_DIM_3D)
-                    amrex::ParallelFor(
-                        np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om, int i_det){
+                        amrex::ParallelFor(
+                            np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om, int i_det){
 #else
-                    amrex::ParallelFor(
-                        np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om_det, int){
-                        const int i_det = i_om_det % (how_many_det_pos);
-                        const int i_om  = i_om_det / (how_many_det_pos);
+                        amrex::ParallelFor(
+                            np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om_det, int){
+                            const int i_det = i_om_det % (how_many_det_pos);
+                            const int i_om  = i_om_det / (how_many_det_pos);
 #endif
 
-                        const auto i_omega_over_c = Complex{0.0_prt, 1.0_prt}*p_omegas[i_om]*inv_c;
+                            const auto i_omega_over_c = Complex{0.0_prt, 1.0_prt}*p_omegas[i_om]*inv_c;
 
-                        const auto nx = p_det_n_x[i_det];
-                        const auto ny = p_det_n_y[i_det];
-                        const auto nz = p_det_n_z[i_det];
+                            const auto nx = p_det_n_x[i_det];
+                            const auto ny = p_det_n_y[i_det];
+                            const auto nz = p_det_n_z[i_det];
 
-                        auto sum_cx = Complex{0.0_prt, 0.0_prt};
-                        auto sum_cy = Complex{0.0_prt, 0.0_prt};
-                        auto sum_cz = Complex{0.0_prt, 0.0_prt};
+                            auto sum_cx = Complex{0.0_prt, 0.0_prt};
+                            auto sum_cy = Complex{0.0_prt, 0.0_prt};
+                            auto sum_cz = Complex{0.0_prt, 0.0_prt};
 
-                        for (int ip =  0; ip < np; ++ip){
-                            amrex::ParticleReal xp, yp, zp;
-                            GetPosition.AsStored(ip, xp, yp, zp);
+                            for (int ip =  0; ip < np; ++ip){
+                                amrex::ParticleReal xp, yp, zp;
+                                GetPosition.AsStored(ip, xp, yp, zp);
 
-                            const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
-                            const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
-                            const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
+                                const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
+                                const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
+                                const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
 
-                            auto const u2 = ux*ux + uy*uy + uz*uz;
+                                auto const u2 = ux*ux + uy*uy + uz*uz;
 
-                            auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
-                            auto const one_over_gamma_c = one_over_gamma*inv_c;
+                                auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
+                                auto const one_over_gamma_c = one_over_gamma*inv_c;
 
-                            const auto bx = ux*one_over_gamma_c;
-                            const auto by = uy*one_over_gamma_c;
-                            const auto bz = uz*one_over_gamma_c;
+                                const auto bx = ux*one_over_gamma_c;
+                                const auto by = uy*one_over_gamma_c;
+                                const auto bz = uz*one_over_gamma_c;
 
-                            const auto one_over_dt_gamma_c = one_over_gamma_c/dt;
+                                const auto one_over_dt_gamma_c = one_over_gamma_c/dt;
 
-                            const auto bpx = (p_ux[ip] - p_ux_old[ip])*one_over_dt_gamma_c;
-                            const auto bpy = (p_uy[ip] - p_uy_old[ip])*one_over_dt_gamma_c;
-                            const auto bpz = (p_uz[ip] - p_uz_old[ip])*one_over_dt_gamma_c;
+                                const auto bpx = (p_ux[ip] - p_ux_old[ip])*one_over_dt_gamma_c;
+                                const auto bpy = (p_uy[ip] - p_uy_old[ip])*one_over_dt_gamma_c;
+                                const auto bpz = (p_uz[ip] - p_uz_old[ip])*one_over_dt_gamma_c;
 
-                            //Calculation of 1_beta.n, n corresponds to m_det_direction, the direction of the normal
-                            const auto one_minus_b_dot_n = 1.0_prt - (bx*nx + by*ny + bz*nz);
+                                //Calculation of 1_beta.n, n corresponds to m_det_direction, the direction of the normal
+                                const auto one_minus_b_dot_n = 1.0_prt - (bx*nx + by*ny + bz*nz);
 
-                            const auto n_minus_beta_x = nx - bx;
-                            const auto n_minus_beta_y = ny - by;
-                            const auto n_minus_beta_z = nz - bz;
+                                const auto n_minus_beta_x = nx - bx;
+                                const auto n_minus_beta_y = ny - by;
+                                const auto n_minus_beta_z = nz - bz;
 
-                            //Calculation of nxbeta
-                            const auto n_minus_beta_cross_bp_x = n_minus_beta_y*bpz - n_minus_beta_z*bpy;
-                            const auto n_minus_beta_cross_bp_y = n_minus_beta_z*bpx - n_minus_beta_x*bpz;
-                            const auto n_minus_beta_cross_bp_z = n_minus_beta_x*bpy - n_minus_beta_y*bpx;
+                                //Calculation of nxbeta
+                                const auto n_minus_beta_cross_bp_x = n_minus_beta_y*bpz - n_minus_beta_z*bpy;
+                                const auto n_minus_beta_cross_bp_y = n_minus_beta_z*bpx - n_minus_beta_x*bpz;
+                                const auto n_minus_beta_cross_bp_z = n_minus_beta_x*bpy - n_minus_beta_y*bpx;
 
-                            //Calculation of nxnxbeta
-                            const auto n_cross_n_minus_beta_cross_bp_x = ny*n_minus_beta_cross_bp_z - nz*n_minus_beta_cross_bp_y;
-                            const auto n_cross_n_minus_beta_cross_bp_y = nz*n_minus_beta_cross_bp_x - nx*n_minus_beta_cross_bp_z;
-                            const auto n_cross_n_minus_beta_cross_bp_z = nx*n_minus_beta_cross_bp_y - ny*n_minus_beta_cross_bp_x;
+                                //Calculation of nxnxbeta
+                                const auto n_cross_n_minus_beta_cross_bp_x = ny*n_minus_beta_cross_bp_z - nz*n_minus_beta_cross_bp_y;
+                                const auto n_cross_n_minus_beta_cross_bp_y = nz*n_minus_beta_cross_bp_x - nx*n_minus_beta_cross_bp_z;
+                                const auto n_cross_n_minus_beta_cross_bp_z = nx*n_minus_beta_cross_bp_y - ny*n_minus_beta_cross_bp_x;
 
-                            const auto n_dot_r = nx*xp + ny*yp + nz*zp;
-                            const auto phase_term = amrex::exp(i_omega_over_c*(c*current_time - (n_dot_r)));
+                                const auto n_dot_r = nx*xp + ny*yp + nz*zp;
+                                const auto phase_term = amrex::exp(i_omega_over_c*(c*current_time - (n_dot_r)));
 
-                            const auto FF = p_m_FF[i_om*how_many_det_pos + i_det];
-                            const auto form_factor = std::sqrt(p_w[ip] + (p_w[ip]*p_w[ip]-p_w[ip])*FF);
+                                const auto FF = p_m_FF[i_om*how_many_det_pos + i_det];
+                                const auto form_factor = std::sqrt(p_w[ip] + (p_w[ip]*p_w[ip]-p_w[ip])*FF);
 
-                            const auto coeff = q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n)*form_factor;
+                                const auto coeff = q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n)*form_factor;
 
-                            //Nyquist limiter
-                            const amrex::Real nyquist_flag = (p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt);
+                                //Nyquist limiter
+                                const amrex::Real nyquist_flag = (p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt);
 
-                            const auto cx = coeff*n_cross_n_minus_beta_cross_bp_x*nyquist_flag;
-                            const auto cy = coeff*n_cross_n_minus_beta_cross_bp_y*nyquist_flag;
-                            const auto cz = coeff*n_cross_n_minus_beta_cross_bp_z*nyquist_flag;
+                                const auto cx = coeff*n_cross_n_minus_beta_cross_bp_x*nyquist_flag;
+                                const auto cy = coeff*n_cross_n_minus_beta_cross_bp_y*nyquist_flag;
+                                const auto cz = coeff*n_cross_n_minus_beta_cross_bp_z*nyquist_flag;
 
-                            sum_cx += cx;
-                            sum_cy += cy;
-                            sum_cz += cz;
-                        }
+                                sum_cx += cx;
+                                sum_cy += cy;
+                                sum_cz += cz;
+                            }
 
-                        const int ncomp = 3;
-                        const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
-                        const int idx1 = idx0 + 1;
-                        const int idx2 = idx0 + 2;
+                            const int ncomp = 3;
+                            const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
+                            const int idx1 = idx0 + 1;
+                            const int idx2 = idx0 + 2;
 
 #if defined(AMREX_USE_OMP)
 
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_real, sum_cx.m_real);
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_imag, sum_cx.m_imag);
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_real, sum_cy.m_real);
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_imag, sum_cy.m_imag);
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_real, sum_cz.m_real);
-                        amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_imag, sum_cz.m_imag);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_real, sum_cx.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_imag, sum_cx.m_imag);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_real, sum_cy.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_imag, sum_cy.m_imag);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_real, sum_cz.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_imag, sum_cz.m_imag);
 #else
-                        p_radiation_data[idx0] += sum_cx;
-                        p_radiation_data[idx1] += sum_cy;
-                        p_radiation_data[idx2] += sum_cz;
+                            p_radiation_data[idx0] += sum_cx;
+                            p_radiation_data[idx1] += sum_cy;
+                            p_radiation_data[idx2] += sum_cz;
 #endif
-                    });
+                        });
+
+                    }
+                    else{ //m_gamma_range.has_value()
+
+
+                        m_offset.resize(np);
+                        m_mask.resize(np);
+                        int* const AMREX_RESTRICT p_offset = m_offset.dataPtr();
+                        int* const AMREX_RESTRICT p_mask = m_mask.dataPtr();
+                        int* const AMREX_RESTRICT p_idx = m_idx.dataPtr();
+
+                        const auto gamma_min = m_gamma_range.value()[0];
+                        const auto gamma_max = m_gamma_range.value()[1];
+
+                        amrex::ParallelFor(np,
+                            [=] AMREX_GPU_DEVICE(int ip){
+
+                                const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
+                                const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
+                                const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
+
+                                auto const u2 = ux*ux + uy*uy + uz*uz;
+
+                                auto const gamma = std::sqrt(1.0_rt + u2*inv_c2);
+
+                                auto const is_in = (gamma >= gamma_min) && (gamma <= gamma_max);
+
+                                p_mask[ip] =  is_in;
+                        });
+
+                        const int sel_np = amrex::Scan::ExclusiveSum(np, p_mask, p_offset);
+                        m_idx.resize(sel_np);
+
+                        amrex::ParallelFor(np,
+                            [=] AMREX_GPU_DEVICE(int ip){
+                                if (p_mask[ip]){
+                                    p_idx[p_offset[ip]] = ip;
+                                }
+                            });
+
+                         std::cout << "############ " << sel_np << "\n";
+
+                        //DEBUG
+
+                        for (int tti = 0; tti < 10; ++tti){
+
+                            const auto ux = 0.5_prt*(p_ux[tti] + p_ux_old[tti]);
+                            const auto uy = 0.5_prt*(p_uy[tti] + p_uy_old[tti]);
+                            const auto uz = 0.5_prt*(p_uz[tti] + p_uz_old[tti]);
+
+                            auto const u2 = ux*ux + uy*uy + uz*uz;
+
+                            auto const gamma = std::sqrt(1.0_rt + u2*inv_c2);
+
+                            std::cout << "[ " << gamma_min << ", " << gamma_max << " ] "
+                                << gamma << " --> " << p_mask[tti] << " " << p_offset[tti];
+
+                            //if (p_mask[tti]){
+                            //    std::cout << " "  << p_idx[p_offset[tti]] << " " << tti << "\n";
+                            //}
+
+                            std::cout << "\n";
+                        }
+
+                        //DEBUG
+
+
+#if defined(WARPX_DIM_3D)
+                        amrex::ParallelFor(
+                            np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om, int i_det){
+#else
+                        amrex::ParallelFor(
+                            np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om_det, int){
+                            const int i_det = i_om_det % (how_many_det_pos);
+                            const int i_om  = i_om_det / (how_many_det_pos);
+#endif
+
+                            const auto i_omega_over_c = Complex{0.0_prt, 1.0_prt}*p_omegas[i_om]*inv_c;
+
+                            const auto nx = p_det_n_x[i_det];
+                            const auto ny = p_det_n_y[i_det];
+                            const auto nz = p_det_n_z[i_det];
+
+                            auto sum_cx = Complex{0.0_prt, 0.0_prt};
+                            auto sum_cy = Complex{0.0_prt, 0.0_prt};
+                            auto sum_cz = Complex{0.0_prt, 0.0_prt};
+
+                            for (int isp =  0; isp < sel_np; ++isp){
+
+                                const int& ip = p_offset[isp];
+
+                                amrex::ParticleReal xp, yp, zp;
+                                GetPosition.AsStored(ip, xp, yp, zp);
+
+                                const auto ux = 0.5_prt*(p_ux[ip] + p_ux_old[ip]);
+                                const auto uy = 0.5_prt*(p_uy[ip] + p_uy_old[ip]);
+                                const auto uz = 0.5_prt*(p_uz[ip] + p_uz_old[ip]);
+
+                                auto const u2 = ux*ux + uy*uy + uz*uz;
+
+                                auto const one_over_gamma = 1._prt/std::sqrt(1.0_rt + u2*inv_c2);
+                                auto const one_over_gamma_c = one_over_gamma*inv_c;
+
+                                const auto bx = ux*one_over_gamma_c;
+                                const auto by = uy*one_over_gamma_c;
+                                const auto bz = uz*one_over_gamma_c;
+
+                                const auto one_over_dt_gamma_c = one_over_gamma_c/dt;
+
+                                const auto bpx = (p_ux[ip] - p_ux_old[ip])*one_over_dt_gamma_c;
+                                const auto bpy = (p_uy[ip] - p_uy_old[ip])*one_over_dt_gamma_c;
+                                const auto bpz = (p_uz[ip] - p_uz_old[ip])*one_over_dt_gamma_c;
+
+                                //Calculation of 1_beta.n, n corresponds to m_det_direction, the direction of the normal
+                                const auto one_minus_b_dot_n = 1.0_prt - (bx*nx + by*ny + bz*nz);
+
+                                const auto n_minus_beta_x = nx - bx;
+                                const auto n_minus_beta_y = ny - by;
+                                const auto n_minus_beta_z = nz - bz;
+
+                                //Calculation of nxbeta
+                                const auto n_minus_beta_cross_bp_x = n_minus_beta_y*bpz - n_minus_beta_z*bpy;
+                                const auto n_minus_beta_cross_bp_y = n_minus_beta_z*bpx - n_minus_beta_x*bpz;
+                                const auto n_minus_beta_cross_bp_z = n_minus_beta_x*bpy - n_minus_beta_y*bpx;
+
+                                //Calculation of nxnxbeta
+                                const auto n_cross_n_minus_beta_cross_bp_x = ny*n_minus_beta_cross_bp_z - nz*n_minus_beta_cross_bp_y;
+                                const auto n_cross_n_minus_beta_cross_bp_y = nz*n_minus_beta_cross_bp_x - nx*n_minus_beta_cross_bp_z;
+                                const auto n_cross_n_minus_beta_cross_bp_z = nx*n_minus_beta_cross_bp_y - ny*n_minus_beta_cross_bp_x;
+
+                                const auto n_dot_r = nx*xp + ny*yp + nz*zp;
+                                const auto phase_term = amrex::exp(i_omega_over_c*(c*current_time - (n_dot_r)));
+
+                                const auto FF = p_m_FF[i_om*how_many_det_pos + i_det];
+                                const auto form_factor = std::sqrt(p_w[ip] + (p_w[ip]*p_w[ip]-p_w[ip])*FF);
+
+                                const auto coeff = q*phase_term/(one_minus_b_dot_n*one_minus_b_dot_n)*form_factor;
+
+                                //Nyquist limiter
+                                const amrex::Real nyquist_flag = (p_omegas[i_om] < ablastr::constant::math::pi/one_minus_b_dot_n/dt);
+
+                                const auto cx = coeff*n_cross_n_minus_beta_cross_bp_x*nyquist_flag;
+                                const auto cy = coeff*n_cross_n_minus_beta_cross_bp_y*nyquist_flag;
+                                const auto cz = coeff*n_cross_n_minus_beta_cross_bp_z*nyquist_flag;
+
+                                sum_cx += cx;
+                                sum_cy += cy;
+                                sum_cz += cz;
+                            }
+
+                            const int ncomp = 3;
+                            const int idx0 = (i_om*how_many_det_pos + i_det)*ncomp;
+                            const int idx1 = idx0 + 1;
+                            const int idx2 = idx0 + 2;
+
+#if defined(AMREX_USE_OMP)
+
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_real, sum_cx.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx0].m_imag, sum_cx.m_imag);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_real, sum_cy.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx1].m_imag, sum_cy.m_imag);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_real, sum_cz.m_real);
+                            amrex::HostDevice::Atomic::Add(&p_radiation_data[idx2].m_imag, sum_cz.m_imag);
+#else
+                            p_radiation_data[idx0] += sum_cx;
+                            p_radiation_data[idx1] += sum_cy;
+                            p_radiation_data[idx2] += sum_cz;
+#endif
+                        });
+                    }
                 }
             }
         }
