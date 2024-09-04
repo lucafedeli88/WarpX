@@ -450,7 +450,7 @@ void RadiationHandler::add_radiation_contribution(
                     const auto np_omegas_detpos = amrex::Box{
                         amrex::IntVect{0,0},
                         amrex::IntVect{static_cast<int>(np-1), ((omega_points) * (how_many_det_pos) - 1)}};
-                        amrex::ignore_unused(p_det_pos_y);
+                        amrex::ignore_unused(p_det_n_y);
 #endif
 
 
@@ -459,7 +459,7 @@ void RadiationHandler::add_radiation_contribution(
                         np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om, int i_det){
 #else
                     amrex::ParallelFor(
-                        np_omegas_detpos, [=] AMREX_GPU_DEVICE(int ip, int i_om_det, int){
+                        np_omegas_detpos, [=] AMREX_GPU_DEVICE(int, int i_om_det, int){
                         const int i_det = i_om_det % (how_many_det_pos);
                         const int i_om  = i_om_det / (how_many_det_pos);
 #endif
