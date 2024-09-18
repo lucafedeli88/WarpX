@@ -13,6 +13,7 @@
 #include "BoundaryConditions/PML.H"
 #include "Diagnostics/MultiDiagnostics.H"
 #include "Diagnostics/ReducedDiags/MultiReducedDiags.H"
+#include "EmbeddedBoundary/Enabled.H"
 #include "Evolve/WarpXDtType.H"
 #include "FieldSolver/FiniteDifferenceSolver/HybridPICModel/HybridPICModel.H"
 #ifdef WARPX_USE_FFT
@@ -535,11 +536,12 @@ void WarpX::HandleParticlesAtBoundaries (int step, amrex::Real cur_time, int num
     }
 
     // interact the particles with EB walls (if present)
-#ifdef AMREX_USE_EB
-    mypc->ScrapeParticlesAtEB(amrex::GetVecOfConstPtrs(m_distance_to_eb));
-    m_particle_boundary_buffer->gatherParticlesFromEmbeddedBoundaries(*mypc, amrex::GetVecOfConstPtrs(m_distance_to_eb));
-    mypc->deleteInvalidParticles();
-#endif
+    if (EB::enabled()) {
+        mypc->ScrapeParticlesAtEB(amrex::GetVecOfConstPtrs(m_distance_to_eb));
+        m_particle_boundary_buffer->gatherParticlesFromEmbeddedBoundaries(
+            *mypc, amrex::GetVecOfConstPtrs(m_distance_to_eb));
+        mypc->deleteInvalidParticles();
+    }
 
     if (sort_intervals.contains(step+1)) {
         if (verbose) {

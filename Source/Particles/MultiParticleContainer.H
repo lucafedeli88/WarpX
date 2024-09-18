@@ -90,6 +90,8 @@ public:
         return allcontainers[index]->meanParticleVelocity();
     }
 
+    amrex::ParticleReal maxParticleVelocity();
+
     void AllocData ();
 
     void InitData ();

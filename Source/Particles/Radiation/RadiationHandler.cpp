@@ -566,9 +566,7 @@ void RadiationHandler::add_radiation_contribution(
 
                         m_offset.resize(np);
                         m_mask.resize(np);
-                        int* const AMREX_RESTRICT p_offset = m_offset.dataPtr();
                         int* const AMREX_RESTRICT p_mask = m_mask.dataPtr();
-                        int* const AMREX_RESTRICT p_idx = m_idx.dataPtr();
 
                         const auto gamma_min = m_gamma_range.value()[0];
                         const auto gamma_max = m_gamma_range.value()[1];
@@ -588,43 +586,6 @@ void RadiationHandler::add_radiation_contribution(
 
                                 p_mask[ip] =  is_in;
                         });
-
-                        const int sel_np = amrex::Scan::ExclusiveSum(np, p_mask, p_offset);
-                        m_idx.resize(sel_np);
-
-                        amrex::ParallelFor(np,
-                            [=] AMREX_GPU_DEVICE(int ip){
-                                if (p_mask[ip]){
-                                    p_idx[p_offset[ip]] = ip;
-                                }
-                            });
-
-                         std::cout << "############ " << sel_np << "\n";
-
-                        //DEBUG
-
-                        for (int tti = 0; tti < 10; ++tti){
-
-                            const auto ux = 0.5_prt*(p_ux[tti] + p_ux_old[tti]);
-                            const auto uy = 0.5_prt*(p_uy[tti] + p_uy_old[tti]);
-                            const auto uz = 0.5_prt*(p_uz[tti] + p_uz_old[tti]);
-
-                            auto const u2 = ux*ux + uy*uy + uz*uz;
-
-                            auto const gamma = std::sqrt(1.0_rt + u2*inv_c2);
-
-                            std::cout << "[ " << gamma_min << ", " << gamma_max << " ] "
-                                << gamma << " --> " << p_mask[tti] << " " << p_offset[tti];
-
-                            //if (p_mask[tti]){
-                            //    std::cout << " "  << p_idx[p_offset[tti]] << " " << tti << "\n";
-                            //}
-
-                            std::cout << "\n";
-                        }
-
-                        //DEBUG
-
 
 #if defined(WARPX_DIM_3D)
                         amrex::ParallelFor(
@@ -646,9 +607,9 @@ void RadiationHandler::add_radiation_contribution(
                             auto sum_cy = Complex{0.0_prt, 0.0_prt};
                             auto sum_cz = Complex{0.0_prt, 0.0_prt};
 
-                            for (int isp =  0; isp < sel_np; ++isp){
+                            for (int ip =  0; ip < np; ++ip){
 
-                                const int& ip = p_offset[isp];
+                                if (!p_mask[ip]) {continue;}
 
                                 amrex::ParticleReal xp, yp, zp;
                                 GetPosition.AsStored(ip, xp, yp, zp);
