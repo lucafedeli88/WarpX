@@ -564,9 +564,10 @@ void RadiationHandler::add_radiation_contribution(
                     else{ //m_gamma_range.has_value()
 
 
-                        m_offset.resize(np);
                         m_mask.resize(np);
+                        m_offset.resize(np);
                         int* const AMREX_RESTRICT p_mask = m_mask.dataPtr();
+                        int* const AMREX_RESTRICT p_offset = m_offset.dataPtr();
 
                         const auto gamma_min = m_gamma_range.value()[0];
                         const auto gamma_max = m_gamma_range.value()[1];
@@ -586,6 +587,18 @@ void RadiationHandler::add_radiation_contribution(
 
                                 p_mask[ip] =  is_in;
                         });
+
+                        const auto nrad = amrex::Scan::ExclusiveSum(np, p_mask, p_offset);
+
+                        m_idx.resize(nrad);
+                        int* const AMREX_RESTRICT p_idx = m_idx.dataPtr();
+
+                        amrex::ParallelFor(np, [=] AMREX_GPU_DEVICE(int ip){
+                            if (p_mask[ip]){
+                                p_idx[p_offset[ip]] = ip;
+                            }
+                        });
+
 
 #if defined(WARPX_DIM_3D)
                         amrex::ParallelFor(
@@ -607,9 +620,9 @@ void RadiationHandler::add_radiation_contribution(
                             auto sum_cy = Complex{0.0_prt, 0.0_prt};
                             auto sum_cz = Complex{0.0_prt, 0.0_prt};
 
-                            for (int ip =  0; ip < np; ++ip){
+                            for (int irad =  0; irad < nrad; ++irad){
 
-                                if (!p_mask[ip]) {continue;}
+                                const auto ip = p_idx[irad];
 
                                 amrex::ParticleReal xp, yp, zp;
                                 GetPosition.AsStored(ip, xp, yp, zp);

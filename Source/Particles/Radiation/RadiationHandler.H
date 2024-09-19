@@ -19,6 +19,7 @@
 
 #include <AMReX_GpuContainers.H>
 #include <AMReX_REAL.H>
+#include <AMReX_Scan.H>
 #include <AMReX_Vector.H>
 
 #include <memory>
@@ -97,8 +98,8 @@ private:
     std::optional<int> m_step_skip = std::nullopt;
 
     std::optional<std::array<amrex::Real,2>> m_gamma_range = std::nullopt;
-    amrex::Gpu::DeviceVector<int> m_offset;
     amrex::Gpu::DeviceVector<int> m_mask;
+    amrex::Gpu::DeviceVector<int> m_offset;
     amrex::Gpu::DeviceVector<int> m_idx;
 };
 #endif // WARPX_PARTICLES_RADIATION_H
