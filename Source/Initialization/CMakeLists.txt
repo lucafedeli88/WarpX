@@ -8,6 +8,7 @@ foreach(D IN LISTS WarpX_DIMS)
         InjectorDensity.cpp
         InjectorMomentum.cpp
         PlasmaInjector.cpp
+        ReadParameters.cpp
         TemperatureProperties.cpp
         VelocityProperties.cpp
         WarpXAMReXInit.cpp

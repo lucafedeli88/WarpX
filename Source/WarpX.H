@@ -1508,8 +1508,8 @@ private:
 
     bool use_hybrid_QED = false;
 
-    int max_step   = std::numeric_limits<int>::max();
-    amrex::Real stop_time = std::numeric_limits<amrex::Real>::max();
+    int max_step;
+    amrex::Real stop_time;
 
     int regrid_int = -1;
 

@@ -36,6 +36,7 @@
 #include "FieldSolver/WarpX_FDTD.H"
 #include "Filter/NCIGodfreyFilter.H"
 #include "Initialization/ExternalField.H"
+#include "Initialization/ReadParameters.H"
 #include "Particles/MultiParticleContainer.H"
 #include "Fluids/MultiFluidContainer.H"
 #include "Fluids/WarpXFluidContainer.H"
@@ -465,21 +466,18 @@ WarpX::~WarpX ()
 void
 WarpX::ReadParameters ()
 {
+    namespace winit = warpx::initialization;
+
     // Ensure that geometry.dims is set properly.
     CheckDims();
 
-    {
-        const ParmParse pp;// Traditionally, max_step and stop_time do not have prefix.
-        utils::parser::queryWithParser(pp, "max_step", max_step);
-        utils::parser::queryWithParser(pp, "stop_time", stop_time);
-        pp.query("authors", m_authors);
-    }
+    m_authors = winit::read_authors();
 
-    {
-        const ParmParse pp_amr("amr");
+    const auto stop_condition = winit::read_stop_condition();
+    max_step = stop_condition.max_step;
+    stop_time = stop_condition.stop_time;
 
-        pp_amr.query("restart", restart_chkfile);
-    }
+    restart_chkfile = winit::read_restart();
 
     {
         const ParmParse pp_algo("algo");
@@ -558,21 +556,7 @@ WarpX::ReadParameters ()
                                          "Signal handling requested in input, but is not supported on this platform");
 #endif
 
-        bool have_checkpoint_diagnostic = false;
-
-        const ParmParse pp("diagnostics");
-        std::vector<std::string> diags_names;
-        pp.queryarr("diags_names", diags_names);
-
-        for (const auto &diag : diags_names) {
-            const ParmParse dd(diag);
-            std::string format;
-            dd.query("format", format);
-            if (format == "checkpoint") {
-                have_checkpoint_diagnostic = true;
-                break;
-            }
-        }
+        bool have_checkpoint_diagnostic = winit::has_checkpoint_diags ();
 
         pp_warpx.query("write_diagnostics_on_restart", write_diagnostics_on_restart);
 
