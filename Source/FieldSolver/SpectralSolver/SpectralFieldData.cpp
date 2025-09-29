@@ -226,9 +226,6 @@ SpectralFieldData::ForwardTransform (const int lev,
                                      const MultiFab& mf, const int field_index,
                                      const int i_comp)
 {
-    amrex::LayoutData<amrex::Real>* cost = WarpX::getCosts(lev);
-    const bool do_costs = WarpXUtilLoadBalance::doCosts(cost, mf.boxArray(), mf.DistributionMap());
-
     // Check field index type, in order to apply proper shift in spectral space
     const bool is_nodal_0 = mf.is_nodal(0);
 #if AMREX_SPACEDIM > 1
@@ -242,12 +239,6 @@ SpectralFieldData::ForwardTransform (const int lev,
     // Note: we do NOT OpenMP parallelize here, since we use OpenMP threads for
     //       the FFTs on each box!
     for ( MFIter mfi(mf); mfi.isValid(); ++mfi ){
-        if (do_costs)
-        {
-            amrex::Gpu::synchronize();
-        }
-        auto wt = static_cast<amrex::Real>(amrex::second());
-
         // Copy the real-space field `mf` to the temporary field `tmpRealField`
         // This ensures that all fields have the same number of points
         // before the Fourier transform.
@@ -305,13 +296,6 @@ SpectralFieldData::ForwardTransform (const int lev,
                 // Copy field into the right index
                 fields_arr(i,j,k,field_index) = spectral_field_value;
             });
-        }
-
-        if (do_costs)
-        {
-            amrex::Gpu::synchronize();
-            wt = static_cast<amrex::Real>(amrex::second()) - wt;
-            amrex::HostDevice::Atomic::Add( &(*cost)[mfi.index()], wt);
         }
     }
 }
