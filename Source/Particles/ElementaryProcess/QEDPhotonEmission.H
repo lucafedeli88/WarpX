@@ -96,6 +96,9 @@ public:
     *
     * @param[in] opt_depth_functor functor to re-initialize the optical depth of the source particles
     * @param[in] opt_depth_runtime_comp index of the optical depth component of the source species
+    * @param[in] chi_lepton_at_creation_comp index of chi_lepton_at_creation_comp
+    * @param[in] E_field_at_creation_comp index of E_field_at_creation_comp
+    * @param[in] E_field_at_creation_comp index of B_field_at_creation_comp
     * @param[in] emission_functor functor to generate photons and update momentum of the source particles
     * @param[in] a_pti particle iterator to iterate over electrons or positrons undergoing QED photon emission process
     * @param[in] lev   the mesh-refinement level
@@ -113,6 +116,9 @@ public:
     PhotonEmissionTransformFunc (
         QuantumSynchrotronGetOpticalDepth opt_depth_functor,
         int opt_depth_runtime_comp,
+        int chi_lepton_at_creation_comp,
+        int E_field_at_creation_comp,
+        int B_field_at_creation_comp,
         QuantumSynchrotronPhotonEmission emission_functor,
         const WarpXParIter& a_pti, int lev, amrex::IntVect ngEB,
         amrex::FArrayBox const& exfab,
@@ -177,6 +183,15 @@ public:
         //Initialize the optical depth component of the source species.
         src.m_runtime_rdata[m_opt_depth_runtime_comp][i_src] =
             m_opt_depth_functor(engine);
+
+        src.m_runtime_rdata[m_chi_lepton_at_creation_comp][i_src] =
+            QedUtils::chi_ele_pos(
+                PhysConst::m_e*ux, PhysConst::m_e*uy, PhysConst::m_e*uz,
+                ex, ey, ez, bx, by, bz);
+        src.m_runtime_rdata[m_E_field_at_creation_comp][i_src] =
+            std::sqrt(ex*ex + ey*ey + ez*ez);
+        src.m_runtime_rdata[m_B_field_at_creation_comp][i_src] =
+            std::sqrt(bx*bx + by*by + bz*bz);
     }
 
 private:
@@ -184,6 +199,9 @@ private:
         m_opt_depth_functor;  /*!< A copy of the functor to initialize the optical depth of the source species. */
 
     int m_opt_depth_runtime_comp = 0;  /*!< Index of the optical depth component of source species*/
+    int m_chi_lepton_at_creation_comp = 0;
+    int m_E_field_at_creation_comp = 0;
+    int m_B_field_at_creation_comp = 0;
 
     QuantumSynchrotronPhotonEmission
         m_emission_functor;  /*!< A copy of the functor to generate photons. It contains only pointers to the lookup tables.*/
