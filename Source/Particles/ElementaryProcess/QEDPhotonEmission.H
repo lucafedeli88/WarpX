@@ -184,13 +184,13 @@ public:
         src.m_runtime_rdata[m_opt_depth_runtime_comp][i_src] =
             m_opt_depth_functor(engine);
 
-        src.m_runtime_rdata[m_chi_lepton_at_creation_comp][i_src] =
+        dst.m_runtime_rdata[m_chi_lepton_at_creation_comp][i_dst] =
             QedUtils::chi_ele_pos(
                 PhysConst::m_e*ux, PhysConst::m_e*uy, PhysConst::m_e*uz,
                 ex, ey, ez, bx, by, bz);
-        src.m_runtime_rdata[m_E_field_at_creation_comp][i_src] =
+        dst.m_runtime_rdata[m_E_field_at_creation_comp][i_dst] =
             std::sqrt(ex*ex + ey*ey + ez*ez);
-        src.m_runtime_rdata[m_B_field_at_creation_comp][i_src] =
+        dst.m_runtime_rdata[m_B_field_at_creation_comp][i_dst] =
             std::sqrt(bx*bx + by*by + bz*bz);
     }
 
