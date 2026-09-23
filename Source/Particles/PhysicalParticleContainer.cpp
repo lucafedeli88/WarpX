@@ -281,6 +281,9 @@ PhysicalParticleContainer::PhysicalParticleContainer (AmrCore* amr_core, int isp
     pp_species_name.query("do_qed_breit_wheeler", m_do_qed_breit_wheeler);
     if (m_do_qed_breit_wheeler) {
         AddRealComp("opticalDepthBW");
+    }
+
+    if(AmIA<PhysicalSpecies::photon>()){
         AddRealComp("chi_lepton_at_creation");
         AddRealComp("E_field_at_creation");
         AddRealComp("B_field_at_creation");
