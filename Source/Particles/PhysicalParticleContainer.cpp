@@ -276,14 +276,14 @@ PhysicalParticleContainer::PhysicalParticleContainer (AmrCore* amr_core, int isp
     pp_species_name.query("do_qed_quantum_sync", m_do_qed_quantum_sync);
     if (m_do_qed_quantum_sync) {
         AddRealComp("opticalDepthQSR");
-        AddRealComp("chi_lepton_at_creation");
-        AddRealComp("E_field_at_creation");
-        AddRealComp("B_field_at_creation");
     }
 
     pp_species_name.query("do_qed_breit_wheeler", m_do_qed_breit_wheeler);
     if (m_do_qed_breit_wheeler) {
         AddRealComp("opticalDepthBW");
+        AddRealComp("chi_lepton_at_creation");
+        AddRealComp("E_field_at_creation");
+        AddRealComp("B_field_at_creation");
     }
 
     if(m_do_qed_quantum_sync){
