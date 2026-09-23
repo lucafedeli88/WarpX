@@ -173,6 +173,11 @@ public:
         auto& g_ux = dst.m_rdata[PIdx::ux][i_dst];
         auto& g_uy = dst.m_rdata[PIdx::uy][i_dst];
         auto& g_uz = dst.m_rdata[PIdx::uz][i_dst];
+
+        const auto chi_at_creation = QedUtils::chi_ele_pos(
+            PhysConst::m_e*ux, PhysConst::m_e*uy, PhysConst::m_e*uz,
+            ex, ey, ez, bx, by, bz);
+
         m_emission_functor(
             ux, uy, uz,
             ex, ey, ez,
@@ -184,10 +189,7 @@ public:
         src.m_runtime_rdata[m_opt_depth_runtime_comp][i_src] =
             m_opt_depth_functor(engine);
 
-        dst.m_runtime_rdata[m_chi_lepton_at_creation_comp][i_dst] =
-            QedUtils::chi_ele_pos(
-                PhysConst::m_e*ux, PhysConst::m_e*uy, PhysConst::m_e*uz,
-                ex, ey, ez, bx, by, bz);
+        dst.m_runtime_rdata[m_chi_lepton_at_creation_comp][i_dst] = chi_at_creation;
         dst.m_runtime_rdata[m_E_field_at_creation_comp][i_dst] =
             std::sqrt(ex*ex + ey*ey + ez*ez);
         dst.m_runtime_rdata[m_B_field_at_creation_comp][i_dst] =
