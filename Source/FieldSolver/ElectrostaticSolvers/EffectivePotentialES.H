@@ -33,7 +33,8 @@ public:
         ablastr::fields::MultiFabRegister& fields,
         MultiParticleContainer& mpc,
         MultiFluidContainer* mfl,
-        int max_level) override;
+        int max_level,
+        bool verbose_step) override;
 
     void ComputeSigma (
         ablastr::fields::MultiLevelScalarField const& rho_fp
@@ -42,7 +43,8 @@ public:
     void computePhi (
         ablastr::fields::MultiLevelScalarField const& rho,
         ablastr::fields::MultiLevelScalarField const& phi,
-        ablastr::fields::MultiLevelVectorField const& efield
+        ablastr::fields::MultiLevelVectorField const& efield,
+        int verbosity
     );
 
     /**
@@ -50,7 +52,7 @@ public:
      * with `rho` as the source.
      * More specifically, this solves the equation
      *  \f[
-     *      \vec{\nabla}\cdot(\sigma\vec{\nabla}) \phi = -\frac{\rho}{\epsilon_0}
+     *      \boldsymbol{\nabla}\cdot(\sigma\boldsymbol{\nabla}) \phi = -\frac{\rho}{\epsilon_0}
      *  \f]
      * \param[in] rho The total charge density
      * \param[out] phi The potential to be computed by this function

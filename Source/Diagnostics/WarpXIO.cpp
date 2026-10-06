@@ -24,6 +24,7 @@
 #include "FieldSolver/ImplicitSolvers/ImplicitSolver.H"
 #include "Particles/MultiParticleContainer.H"
 #include "Particles/WarpXParticleContainer.H"
+#include "Python/callbacks.H"
 #include "Utils/TextMsg.H"
 
 #include <ablastr/fields/MultiFabRegister.H>
@@ -214,6 +215,13 @@ WarpX::InitFromCheckpoint ()
             AllocLevelData(lev, ba, dm);
         }
 
+        // Initialize MultiFabs associated with the particle species
+        // Do this here so that the MultiFabs can be included in the diagnostics
+        // and can be read in from the restart data.
+        mypc->AllocData();
+
+        ExecutePythonCallback("allocdata");
+
         mypc->ReadHeader(is);
         const int n_species = mypc->nSpecies();
         for (int i=0; i<n_species; i++)
@@ -395,6 +403,11 @@ WarpX::InitFromCheckpoint ()
                             amrex::MultiFabFileFullPrefix(lev, restart_chkfile, level_prefix, "jz_cp"));
             }
         }
+
+        // Read any fields flagged checkpoint_restart in the field register
+        // (mirrors FlushFormatCheckpoint's write_checkpoints call). Flagged
+        // fields absent from an older checkpoint are skipped, not errors.
+        m_fields.read_restarts(lev, amrex::MultiFabFileFullPrefix(lev, restart_chkfile, level_prefix, ""));
     }
 
     InitPML();
@@ -417,11 +430,10 @@ WarpX::InitFromCheckpoint ()
     reduced_diags->ReadCheckpointData(restart_chkfile);
 
     // Initialize particles
-    mypc->AllocData();
     mypc->Restart(restart_chkfile);
 
     if (m_implicit_solver) {
-        m_implicit_solver->Define(this, restart_chkfile.empty());
+        m_implicit_solver->Define(this, /*from_restart=*/true);
         m_implicit_solver->CreateParticleAttributes();
     }
 

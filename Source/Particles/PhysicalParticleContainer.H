@@ -295,18 +295,6 @@ public:
  * \brief Apply NCI Godfrey filter to all components of E and B before gather
  * \param lev MR level
  * \param box box onto which the filter is applied
- * \param exeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field Ex
- * \param eyeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field Ey
- * \param ezeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field Ez
- * \param bxeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field Bx
- * \param byeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field By
- * \param bzeli safeguard Elixir object (to avoid de-allocating too early
-            --between ParIter iterations-- on GPU) for field Bz
  * \param filtered_Ex Array containing filtered value
  * \param filtered_Ey Array containing filtered value
  * \param filtered_Ez Array containing filtered value
@@ -332,8 +320,6 @@ public:
  */
     void applyNCIFilter (
         int lev, const amrex::Box& box,
-        amrex::Elixir& exeli, amrex::Elixir& eyeli, amrex::Elixir& ezeli,
-        amrex::Elixir& bxeli, amrex::Elixir& byeli, amrex::Elixir& bzeli,
         amrex::FArrayBox& filtered_Ex, amrex::FArrayBox& filtered_Ey,
         amrex::FArrayBox& filtered_Ez, amrex::FArrayBox& filtered_Bx,
         amrex::FArrayBox& filtered_By, amrex::FArrayBox& filtered_Bz,
@@ -465,7 +451,6 @@ protected:
     */
     bool findRefinedInjectionBox (amrex::Box& fine_injection_box, amrex::IntVect& rrfac);
 
-    std::string species_name;
     std::vector<std::unique_ptr<PlasmaInjector>> plasma_injectors;
 
     // When true, adjust the transverse particle positions accounting
@@ -473,7 +458,7 @@ protected:
     // particle and the time of the boosted frame.
     bool boost_adjust_transverse_positions = false;
     bool do_backward_propagation = false;
-    bool m_rz_random_theta = true;
+    bool m_random_theta = true;
 
     // Impose t_lab from the openPMD file for externally loaded species
     bool impose_t_lab_from_file = false;

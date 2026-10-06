@@ -117,9 +117,9 @@ computeEffectivePotentialPhi (
     bool do_single_precision_comms = false,
     std::optional<amrex::Vector<amrex::IntVect> > rel_ref_ratio = std::nullopt,
     [[maybe_unused]] T_PostPhiCalculationFunctor post_phi_calculation = std::nullopt,
-    [[maybe_unused]] T_BoundaryHandler const boundary_handler = std::nullopt,
+    [[maybe_unused]] T_BoundaryHandler const& boundary_handler = std::nullopt,
     [[maybe_unused]] std::optional<amrex::Real const> current_time = std::nullopt, // only used for EB
-    [[maybe_unused]] std::optional<amrex::Vector<T_FArrayBoxFactory const *> > eb_farray_box_factory = std::nullopt // only used for EB
+    [[maybe_unused]] const std::optional<amrex::Vector<T_FArrayBoxFactory const *> >& eb_farray_box_factory = std::nullopt // only used for EB
 ) {
     using namespace amrex::literals;
 
@@ -180,6 +180,9 @@ computeEffectivePotentialPhi (
                     linop_nodelap->setEBDirichlet(boundary_handler.getPhiEB(current_time.value()));
                 }
             }
+            if (is_rz) {
+                linop_nodelap->setRZ(true);
+            }
             linop_nodelap->setSigma(lev, sigma);
             linop = std::move(linop_nodelap);
 #endif
@@ -228,6 +231,7 @@ computeEffectivePotentialPhi (
         mlmg.setVerbose(verbosity);
         mlmg.setMaxIter(max_iters);
         mlmg.setConvergenceNormType(amrex::MLMGNormType::greater);
+        mlmg.setNoGpuSync(true);
 
         const int ng = int(grid_type == utils::enums::GridType::Collocated); // ghost cells
         if (ng) {

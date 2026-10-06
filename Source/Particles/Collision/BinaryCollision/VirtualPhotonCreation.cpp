@@ -178,16 +178,16 @@ void GenerateVirtualPhotons (MultiParticleContainer* mypc){
                     const amrex::ParticleReal x  = soa.m_rdata[PIdx::x][i];
                     const amrex::ParticleReal z  = soa.m_rdata[PIdx::z][i];
 #elif defined (WARPX_DIM_RZ)
-                    const amrex::ParticleReal x  = soa.m_rdata[PIdx::x][i];
+                    const amrex::ParticleReal r  = soa.m_rdata[PIdx::r][i];
                     const amrex::ParticleReal z  = soa.m_rdata[PIdx::z][i];
                     const amrex::ParticleReal theta  = soa.m_rdata[PIdx::theta][i];
 #elif defined (WARPX_DIM_1D_Z)
                     const amrex::ParticleReal z  = soa.m_rdata[PIdx::z][i];
 #elif defined (WARPX_DIM_RCYLINDER)
-                    const amrex::ParticleReal x  = soa.m_rdata[PIdx::x][i];
+                    const amrex::ParticleReal r  = soa.m_rdata[PIdx::r][i];
                     const amrex::ParticleReal theta  = soa.m_rdata[PIdx::theta][i];
 #elif defined(WARPX_DIM_RSPHERE)
-                    const amrex::ParticleReal x  = soa.m_rdata[PIdx::x][i];
+                    const amrex::ParticleReal r  = soa.m_rdata[PIdx::r][i];
                     const amrex::ParticleReal theta  = soa.m_rdata[PIdx::theta][i];
                     const amrex::ParticleReal phi  = soa.m_rdata[PIdx::phi][i];
 #endif
@@ -266,16 +266,16 @@ void GenerateVirtualPhotons (MultiParticleContainer* mypc){
                         pa_vp[PIdx::x][ip] = x;
                         pa_vp[PIdx::z][ip] = z;
 #elif defined (WARPX_DIM_RZ)
-                        pa_vp[PIdx::x][ip] = x;
+                        pa_vp[PIdx::r][ip] = r;
                         pa_vp[PIdx::z][ip] = z;
                         pa_vp[PIdx::theta][ip] = theta;
 #elif defined (WARPX_DIM_1D_Z)
                         pa_vp[PIdx::z][ip] = z;
 #elif defined (WARPX_DIM_RCYLINDER)
-                        pa_vp[PIdx::x][ip] = x;
+                        pa_vp[PIdx::r][ip] = r;
                         pa_vp[PIdx::theta][ip] = theta;
 #elif defined(WARPX_DIM_RSPHERE)
-                        pa_vp[PIdx::x][ip] = x;
+                        pa_vp[PIdx::r][ip] = r;
                         pa_vp[PIdx::theta][ip] = theta;
                         pa_vp[PIdx::phi][ip] = phi;
 #endif
@@ -285,6 +285,17 @@ void GenerateVirtualPhotons (MultiParticleContainer* mypc){
                 });
             } // mfi
         } // lev
+
+#if defined (WARPX_DIM_3D)
+        if (do_beam_size_effect) {
+            // The beam-size effect displaces virtual photons away from the cell
+            // of their parent particle, so they need a Redistribute to be placed
+            // in the correct box/tile. This must happen before they are used in
+            // collisions (see CollisionHandler::doCollisions) since the collision
+            // kernel assumes that particles are already in the correct box/tile.
+            vphotons.Redistribute();
+        }
+#endif
     } // species
 
 #else

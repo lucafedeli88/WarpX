@@ -77,7 +77,7 @@ RigidInjectedParticleContainer::RigidInjectedParticleContainer (AmrCore* amr_cor
         } else if (raw == "false" || raw == "0") {
             rigid_advance_mode = RigidAdvanceMode::vz;
         } else {
-            pp_species_name.query_enum_sloppy("rigid_advance", rigid_advance_mode, "-_");
+            pp_species_name.query_enum_case_insensitive("rigid_advance", rigid_advance_mode);
         }
     }
 }
@@ -393,7 +393,7 @@ RigidInjectedParticleContainer::PushP (int lev, Real dt,
             ParticleReal* const AMREX_RESTRICT uz_save = uzp_save.dataPtr();
 
             // Loop over the particles and update their momentum
-            const amrex::ParticleReal q = this->charge;
+            const amrex::ParticleReal q = this->m_charge;
             const amrex::ParticleReal mass = this->m_mass;
 
             const auto pusher_algo = WarpX::particle_pusher_algo;

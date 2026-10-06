@@ -44,7 +44,7 @@ namespace
         if constexpr(is_castable_to_string<T>())
         {
             // already a unique string key
-            return std::string(name);
+            return std::string(std::move(name));
         } else
         {
             // user-defined AMREX_ENUM or compile error
@@ -241,6 +241,9 @@ namespace ablastr::fields
         /** redistribute on @see amrex::AmrCore::RemakeLevel */
         bool m_redistribute_on_remake = true;
 
+        /** whether to include in checkpoint/restart */
+        bool m_checkpoint_restart = false;
+
         /** if m_mf is a non-owning alias, this string tracks the name of the owner */
         std::string m_owner;
 
@@ -287,6 +290,7 @@ namespace ablastr::fields
          * @param initial_value the optional initial value
          * @param remake follow the default domain decomposition of the simulation
          * @param redistribute_on_remake redistribute on @see amrex::AmrCore::RemakeLevel
+         * @param checkpoint_restart whether to include in checkpoint/restart
          * @return pointer to newly allocated MultiFab
          */
         template<typename T>
@@ -300,11 +304,12 @@ namespace ablastr::fields
             amrex::IntVect const & ngrow,
             std::optional<amrex::Real const> initial_value = std::nullopt,
             bool remake = true,
-            bool redistribute_on_remake = true
+            bool redistribute_on_remake = true,
+            bool checkpoint_restart = false
         )
         {
             return internal_alloc_init(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level,
                 ba,
                 dm,
@@ -312,7 +317,8 @@ namespace ablastr::fields
                 ngrow,
                 initial_value,
                 remake,
-                redistribute_on_remake
+                redistribute_on_remake,
+                checkpoint_restart
             );
         }
 
@@ -331,6 +337,7 @@ namespace ablastr::fields
          * @param initial_value the optional initial value
          * @param remake follow the default domain decomposition of the simulation
          * @param redistribute_on_remake redistribute on @see amrex::AmrCore::RemakeLevel
+         * @param checkpoint_restart whether to include in checkpoint/restart
          * @return pointer to newly allocated MultiFab
          */
         template<typename T>
@@ -345,11 +352,12 @@ namespace ablastr::fields
             amrex::IntVect const & ngrow,
             std::optional<amrex::Real const> initial_value = std::nullopt,
             bool remake = true,
-            bool redistribute_on_remake = true
+            bool redistribute_on_remake = true,
+            bool checkpoint_restart = false
         )
         {
             return internal_alloc_init(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 dir,
                 level,
                 ba,
@@ -358,7 +366,8 @@ namespace ablastr::fields
                 ngrow,
                 initial_value,
                 remake,
-                redistribute_on_remake
+                redistribute_on_remake,
+                checkpoint_restart
             );
         }
 
@@ -435,7 +444,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_has(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -456,7 +465,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_has(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 dir,
                 level
             );
@@ -476,7 +485,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_has_vector(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -497,7 +506,7 @@ namespace ablastr::fields
         )
         {
             return internal_get(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -520,7 +529,7 @@ namespace ablastr::fields
         )
         {
             return internal_get(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 dir,
                 level
             );
@@ -542,7 +551,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_get(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -565,7 +574,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_get(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 dir,
                 level
             );
@@ -590,7 +599,7 @@ namespace ablastr::fields
         )
         {
             return internal_get_mr_levels(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 finest_level,
                 skip_level_0
             );
@@ -604,7 +613,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_get_mr_levels(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 finest_level,
                 skip_level_0
             );
@@ -628,7 +637,7 @@ namespace ablastr::fields
         )
         {
             return internal_get_alldirs(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -640,7 +649,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_get_alldirs(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 level
             );
         }
@@ -666,7 +675,7 @@ namespace ablastr::fields
         )
         {
             return internal_get_mr_levels_alldirs(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 finest_level,
                 skip_level_0
             );
@@ -680,7 +689,7 @@ namespace ablastr::fields
         ) const
         {
             return internal_get_mr_levels_alldirs(
-                getExtractedName(name),
+                getExtractedName(std::move(name)),
                 finest_level,
                 skip_level_0
             );
@@ -706,7 +715,7 @@ namespace ablastr::fields
             int level
         )
         {
-            internal_erase(getExtractedName(name), level);
+            internal_erase(getExtractedName(std::move(name)), level);
         }
 
         /** Deallocate and remove a vector field component.
@@ -748,6 +757,34 @@ namespace ablastr::fields
         remake_level (
             int other_level,
             amrex::DistributionMapping const & new_dm
+        );
+
+        /** Write out any (i)MultiFabs that are flagged checkpoint_restart to the checkpoint files
+         *
+         * @param level the MR level of the MF
+         * @param dir the pathname to the checkpoint files
+         */
+        void
+        write_checkpoints (
+            int level,
+            std::string const & dir
+        );
+
+        /** Read in any (i)MultiFabs that are flagged checkpoint_restart from the checkpoint files
+         *
+         * A flagged field whose file is absent from the checkpoint (e.g. a
+         * checkpoint written before the field was flagged, or by a run with
+         * a different set of flagged fields) is skipped rather than fatal,
+         * so that older checkpoints remain restartable; the field keeps its
+         * runtime initialization.
+         *
+         * @param level the MR level of the MF
+         * @param dir the pathname to the checkpoint files
+         */
+        void
+        read_restarts (
+            int level,
+            std::string const & dir
         );
 
         /** Create the register name of scalar field and MR level
@@ -803,7 +840,8 @@ namespace ablastr::fields
             amrex::IntVect const & ngrow,
             std::optional<amrex::Real const> initial_value = std::nullopt,
             bool remake = true,
-            bool redistribute_on_remake = true
+            bool redistribute_on_remake = true,
+            bool checkpoint_restart = false
         );
         amrex::MultiFab*
         internal_alloc_init (
@@ -816,7 +854,8 @@ namespace ablastr::fields
             amrex::IntVect const & ngrow,
             std::optional<amrex::Real const> initial_value = std::nullopt,
             bool remake = true,
-            bool redistribute_on_remake = true
+            bool redistribute_on_remake = true,
+            bool checkpoint_restart = false
         );
 
         amrex::MultiFab*

@@ -17,7 +17,7 @@ Examples of inputs files can be found in the :ref:`Examples <usage-examples>` se
 
 .. note::
 
-   The AMReX parser (see :ref:`running-cpp-parameters-parser`) is used for the right-hand side of all input parameters that consist of one or more integers or floats. Expressions like ``<species_name>.density_max = "0.1+2.3"`` and expressions that include user-defined constants are accepted.
+   The AMReX parser (see :ref:`running-cpp-parameters-parser`) is used for the right-hand side of all input parameters that consist of one or more integers or floats. Expressions like :pp:param:`<species_name>.density_max = "0.1+2.3"` and expressions that include user-defined constants are accepted.
 
 .. _running-cpp-parameters-parser:
 
@@ -205,13 +205,13 @@ Overall simulation parameters
     :type: ``string`` or ``int`` > 0
     :optional:
 
-    If provided ``warpx.random_seed = random``, the random seed will be determined
+    If provided :pp:param:`warpx.random_seed = random`, the random seed will be determined
     using ``std::random_device`` and ``std::clock()``,
     thus every simulation run produces different random numbers.
-    If provided ``warpx.random_seed = n``, and it is required that ``n > 0``,
+    If provided :pp:param:`warpx.random_seed = n`, and it is required that ``n > 0``,
     the random seed for each MPI rank is ``(mpi_rank+1) * n``,
     where ``mpi_rank`` starts from 0.
-    ``n = 1`` and ``warpx.random_seed = default``
+    ``n = 1`` and :pp:param:`warpx.random_seed = default`
     produce the default random seed.
     Note that when GPU threading is used,
     one should not expect to obtain the same random numbers,
@@ -238,9 +238,9 @@ Overall simulation parameters
         Exact energy conservation requires matching gather and deposition.
         The following depositions support this:
 
-        - ``algo.current_deposition = direct``
-        - ``algo.current_deposition = villasenor``
-        - ``algo.current_deposition = esirkepov`` (Not compatible with ``implicit_evolve.use_mass_matrices_jacobian = true``.)
+        - :pp:param:`algo.current_deposition = direct`
+        - :pp:param:`algo.current_deposition = villasenor`
+        - :pp:param:`algo.current_deposition = esirkepov` (Not compatible with ``implicit_evolve.use_mass_matrices_jacobian = true``.)
 
       - **Numerical stability:**
 
@@ -257,7 +257,7 @@ Overall simulation parameters
 
           - ``picard.verbose`` (``bool``, default: true)
           - ``picard.require_convergence`` (``bool``, default: true)
-          - ``picard.maximum_iterations`` (``int``, default: 100)
+          - ``picard.max_iterations`` (``int``, default: 100)
           - ``picard.relative_tolerance`` (``float``, default: 1.0e-6)
           - ``picard.absolute_tolerance`` (``float``, default: 0.0)
           - ``picard.diagnostic_file`` (``string``, default: None)
@@ -266,8 +266,9 @@ Overall simulation parameters
         - ``implicit_evolve.nonlinear_solver = newton``: Use a PS-JFNK method. Required for large time steps, but efficiency often relies on preconditioning and/or using ``implicit_evolve.use_mass_matrices_jacobian = true``.
 
           - ``newton.verbose`` (``bool``, default: true)
+          - ``newton.linear_solver`` (``string``, default: "gmres") Other excepted value, "petsc_ksp".
           - ``newton.require_convergence`` (``bool``, default: true)
-          - ``newton.maximum_iterations`` (``int``, default: 100)
+          - ``newton.max_iterations`` (``int``, default: 100)
           - ``newton.relative_tolerance`` (``float``, default: 1.0e-6)
           - ``newton.absolute_tolerance`` (``float``, default: 0.0)
           - ``newton.diagnostic_file`` (``string``, default: None)
@@ -277,7 +278,7 @@ Overall simulation parameters
 
           - ``gmres.verbose_int`` (``int``, default: 2)
           - ``gmres.restart_length`` (``int``, default: 30)
-          - ``gmres.maximum_iterations`` (``int``, default: 1000)
+          - ``gmres.max_iterations`` (``int``, default: 1000)
           - ``gmres.relative_tolerance`` (``float``, default: 1.0e-4)
           - ``gmres.absolute_tolerance`` (``float``, default: 0.0)
 
@@ -289,10 +290,13 @@ Overall simulation parameters
           - ``implicit_evolve.max_particle_iterations`` (``integer``, default: 21)
           - ``implicit_evolve.particle_tolerance`` (``float``, default: 1.e-10)
           - ``implicit_evolve.particle_suborbits`` (``bool``, default: false)
+          - ``implicit_evolve.suborbit_warning_threshold`` (``int``, default: 5)
+          - ``implicit_evolve.suborbit_statistics_interval`` (``int``, default: 100)
           - ``implicit_evolve.print_unconverged_particle_details`` (``bool``, default: false)
 
         - ``implicit_evolve.use_mass_matrices_jacobian`` (``bool``, default: false).
           When ``true``, the plasma current density is computed using the mass matrices during the linear stage of PS-JFNK, replacing direct particle calculations. This can enable large speed ups for simulations with many particles.
+          In 3D, this option is currently only implemented for ``algo.current_deposition = direct``.
 
           - ``implicit_evolve.skip_particle_picard_init`` (``bool``, default: false).
             When ``true`` and ``implicit_evolve.use_mass_matrices_jacobian = true``, the full Picard update of the particles is skipped on the initial Newton step, and only a single iteration is performed.
@@ -307,7 +311,7 @@ Overall simulation parameters
           If using ``jacobian.pc_type = pc_petsc``, this parameter specifies the width of the mass matrices included in the preconditioner.
           In most cases, a width of 1 is sufficient for good GMRES performance.
 
-        - ``jacobian.pc_type`` (``string``, default: None). A preconditioner can be used to minimize the number of linear GMRES iterations. There are two options:
+        - ``jacobian.pc_type`` (``string``, default: None). A preconditioner can be used to minimize the number of linear GMRES iterations. There are three options:
 
           - ``jacobian.pc_type = pc_curl_curl_mlmg``: Use the AMReX MLMG solver for the curl curl formulation of Maxwell's equations. This preconditioner solves the following equation:
 
@@ -336,6 +340,15 @@ Overall simulation parameters
             - ``pc_jacobi.relative_tolerance`` (``float``, default: 1.0e-4)
             - ``pc_jacobi.absolute_tolerance`` (``float``, default: 1.0e-16)
 
+          - ``jacobian.pc_type = pc_petsc``: Use the PETSc solver.
+
+            - ``pc_petsc.type`` (``string``, default: "asm")
+            - ``pc_petsc.asm_overlap`` (``int``, default: 0)
+            - ``pc_petsc.sub_type`` (``string``, default: "ilu")
+            - ``pc_petsc.ilu_factor_levels`` (``int``, default: 2)
+            - ``pc_petsc.hypre_type`` (``string``, default: "euclid")
+            - ``pc_petsc.euclid_factor_levels`` (``int``, default: 2)
+
       - **References:** (WarpX includes relativistic extensions not discussed in references.)
 
         - `Angus et al., On numerical energy conservation for an implicit particle-in-cell method coupled with a binary Monte-Carlo algorithm for Coulomb collisions <https://doi.org/10.1016/j.jcp.2022.111030>`__.
@@ -353,9 +366,58 @@ Overall simulation parameters
       above apply here as well (except that :math:`\theta` is fixed to 0.5 and that charge will not be conserved).
       In this version, the advance is Strang split, with a half advance of the source free Maxwell's equation (with a spectral solver), a full advance of the particles plus longitudinal E field, and a second half advance of the source free Maxwell's equations.
       The advantage of this method is that with the Spectral advance of the fields, it is dispersionless.
-      Note that exact energy convergence is achieved only with one grid block and ``psatd.periodic_single_box_fft = 1``. Otherwise,
+      Note that exact energy convergence is achieved only with one grid block and :pp:param:`psatd.periodic_single_box_fft = 1`. Otherwise,
       the energy conservation is spoiled because of the inconsistency of the periodic assumption of the spectral solver and the
       non-periodic behavior of the individual blocks.
+
+    * ``semi_implicit_darwin``: Use the semi-implicit Darwin field solver.
+
+      This solver advances the electrostatic (longitudinal) field together with the inductive
+      (magnetoinductive Darwin) field, thereby retaining low-frequency magnetic effects while
+      filtering out light waves.
+
+      - **Requirements and restrictions:**
+
+        - This solver requires an electrostatic solver to also be set, i.e.
+          :pp:param:`warpx.do_electrostatic` must be specified (e.g. ``warpx.do_electrostatic = labframe``).
+          Unlike a pure electrostatic run, setting ``algo.evolve_scheme = semi_implicit_darwin`` does
+          **not** disable the electromagnetic solver, since the magnetic field is still evolved.
+        - The electromagnetic solver must be the Yee solver, i.e. :pp:param:`algo.maxwell_solver` = ``yee``
+          (the default). No other Maxwell solver is compatible with the Darwin scheme.
+
+      - **Linear (GMRES) solver options:**
+        The magnetoinductive solve uses the AMReX GMRES linear solver, whose parameters are set with the
+        ``amrex_gmres`` prefix:
+
+        - ``amrex_gmres.verbose_int`` (``int``, default: 2) Level of verbosity of the linear solver output.
+        - ``amrex_gmres.restart_length`` (``int``, default: 30) How often to restart the GMRES iterations.
+        - ``amrex_gmres.max_iterations`` (``int``, default: 1000) Maximum number of iterations.
+        - ``amrex_gmres.relative_tolerance`` (``float``, default: 1.0e-4) Relative tolerance of the convergence.
+        - ``amrex_gmres.absolute_tolerance`` (``float``, default: 0.0) Absolute tolerance of the convergence.
+        - ``amrex_gmres.pc_type`` (``string``, default: ``none``) Preconditioner applied inside the GMRES
+          iterations. The only supported options are ``none`` and ``pc_darwin_mlmg``, described below.
+
+      - **Preconditioner options:**
+        Setting ``amrex_gmres.pc_type = pc_darwin_mlmg`` use the multi-grid algorithm
+        as a preconditioner within the GMRes iteration. Because the Darwin magnetoinductive equation
+        :math:`\nabla^4 Z + \nabla \times ( \chi(x) \nabla\times Z) = ...` is not well-adapted for multi-grid
+        (and because the preconditioner does not need to solve for the exact equation), here the multigrid
+        solver uses the approximate equation :math:`\nabla^2 ( \nabla^2 + \chi ) Z = ...`; this
+        is equivalent to the original magnetostatic equation if :math:`Z` is divergence-free and
+        `\chi` is a slowly varying function of space. In practice, two separate passes of multigrid are
+        used in the preconditioner, in order to invert the operators  :math:`\nabla^2 + \chi` and `\nabla^2`
+        respectively.
+
+        - ``pc_darwin_mlmg.verbose`` (``bool``, default: false)
+        - ``pc_darwin_mlmg.bottom_verbose`` (``bool``, default: false)
+        - ``pc_darwin_mlmg.agglomeration`` (``bool``, default: true)
+        - ``pc_darwin_mlmg.consolidation`` (``bool``, default: true)
+        - ``pc_darwin_mlmg.max_iter`` (``int``, default: 2) Fixed number of V-cycles per multigrid
+          solve. This is deliberately fixed, so that the preconditioner stays a fixed linear operator
+          over a GMRES solve (only true when solver tolerance is set to 0, as by default).
+        - ``pc_darwin_mlmg.max_coarsening_level`` (``int``, default: 30)
+        - ``pc_darwin_mlmg.relative_tolerance`` (``float``, default: 0)
+        - ``pc_darwin_mlmg.absolute_tolerance`` (``float``, default: 0)
 
 .. _param-electrostatic-pic:
 
@@ -396,9 +458,9 @@ Overall simulation parameters
         It only works in 3D and it requires the compilation flag ``-DWarpX_FFT=ON``.
         If mesh refinement is enabled, this solver only works on the coarsest level.
         On the refined patches, the Poisson equation is solved with the multigrid solver.
-        In electrostatic mode, this solver requires open field boundary conditions (``boundary.field_lo,hi = open``).
+        In electrostatic mode, this solver requires open field boundary conditions (:pp:param:`boundary.field_lo,hi = open`).
         In electromagnetic mode, this solver can be used to initialize the species' self fields
-        (``<species_name>.initialize_self_fields=1``) provided that the field BCs are PML (``boundary.field_lo,hi = PML``).
+        (:pp:param:`<species_name>.initialize_self_fields = 1`) provided that the field BCs are PML (:pp:param:`boundary.field_lo,hi = PML`).
 
           * ``warpx.use_2d_slices_fft_solver`` (``bool``) optional (default: 0): Select the type of Integrated Green Function solver.
             If 0, solve Poisson equation in full 3D geometry.
@@ -460,6 +522,22 @@ Overall simulation parameters
     MLMG solver looks for verbosity levels from 0-5. A higher number results in more
     verbose output. When using ``labframe-electromagnetostatic``, this value
     is also used as the default for ``magnetostatic_solver_verbosity``.
+
+.. pp:param:: warpx.self_fields_num_final_sweeps
+    :type: ``integer``
+    :default: 8
+
+    Number of relaxation (smoothing) sweeps performed during the final smoothing
+    stage of the AMReX MLMG Poisson solve for electrostatic self fields.
+
+    Final smoothing is applied by AMReX when the smoother is used as the bottom
+    solver of the multigrid solve.
+
+    Increasing this value can improve residual reduction per MLMG iteration,
+    which may help convergence, but it also increases the work performed in each
+    MLMG iteration, so the most efficient value is problem-dependent.
+
+    Must be greater than zero when specified.
 
 .. pp:param:: warpx.magnetostatic_solver_required_precision
     :type: ``float``
@@ -563,7 +641,7 @@ We follow the same naming, but remove the ``SIG`` prefix, e.g., the WarpX signal
 .. tip::
 
    For example, the following logic can be added to `Slurm batch scripts <https://docs.gwdg.de/doku.php?id=en:services:application_services:high_performance_computing:running_jobs_slurm:signals>`__ (`signal name to number mapping here <https://en.wikipedia.org/wiki/Signal_(IPC)#Default_action>`__) to gracefully shut down 6 min prior to walltime.
-   If you have a checkpoint diagnostics in your inputs file, this automatically will write a checkpoint due to the default ``<diag_name>.dump_last_timestep = 1`` option in WarpX.
+   If you have a checkpoint diagnostics in your inputs file, this automatically will write a checkpoint due to the default :pp:param:`<diag_name>.dump_last_timestep = 1` option in WarpX.
 
    .. code-block:: bash
 
@@ -728,7 +806,7 @@ Setting up the field mesh
     :type: ``integer``
     :optional:
 
-    Default: ``warpx.n_field_gather_buffer = n_current_deposition_buffer + 1`` (one cell larger than ``n_current_deposition_buffer`` on the fine grid).
+    Default: :pp:param:`warpx.n_field_gather_buffer = n_current_deposition_buffer + 1` (one cell larger than ``n_current_deposition_buffer`` on the fine grid).
 
     When using mesh refinement, particles that are located inside a refinement patch, but within ``n_field_gather_buffer`` cells of the edge of the patch, gather the fields from the lower refinement level, instead of gathering the fields from the refinement patch itself.
     This avoids some of the spurious effects that can occur inside the refinement patch, close to its edge.
@@ -836,7 +914,7 @@ Domain Boundary Conditions
     :default: ``0``
 
     Gives the value of the electric potential, in Volts, at the boundaries, for ``pec`` boundaries. With electrostatic solvers
-    (i.e., with ``warpx.do_electrostatic = ...``), this is used in order to compute the potential
+    (i.e., with :pp:param:`warpx.do_electrostatic = ...`), this is used in order to compute the potential
     in the simulation volume at each timestep. When using other solvers (e.g. Maxwell solver),
     setting these variables will trigger an electrostatic solve at ``t=0``, to compute the initial
     electric field produced by the boundaries.
@@ -933,7 +1011,7 @@ Additional PML parameters
     :type: ``float``
     :default: 1
 
-    When ``warpx.do_pml_j_damping = 1``, the assumed velocity of the particles to be absorbed in the PML, in units of the speed of light ``c``.
+    When :pp:param:`warpx.do_pml_j_damping = 1`, the assumed velocity of the particles to be absorbed in the PML, in units of the speed of light ``c``.
 
 .. pp:param:: warpx.do_pml_dive_cleaning
     :type: ``bool``
@@ -987,12 +1065,32 @@ additionally define the electric potential at the embedded boundary with an anal
 
     Gives the value of the electric potential, in Volts, at the surface of the embedded boundary,
     as a function of  ``x``, ``y``, ``z`` and ``t``. With electrostatic solvers (i.e., with
-    ``warpx.do_electrostatic = ...``), this is used in order to compute the potential
+    :pp:param:`warpx.do_electrostatic = ...`), this is used in order to compute the potential
     in the simulation volume at each timestep. When using other solvers (e.g. Maxwell solver),
     setting this variable will trigger an electrostatic solve at ``t=0``, to compute the initial
     electric field produced by the boundaries. Note that this function is also evaluated
     inside the embedded boundary. For this reason, it is important to define
     this function in such a way that it is constant inside the embedded boundary.
+
+.. pp:param:: boundary.particle_eb
+    :type: ``string``
+    :default: ``Absorbing``
+    :optional:
+
+    The boundary condition applied to the particles when they reach the surface of the embedded boundary. Options are:
+
+    * ``Absorbing``: Particles that reach the embedded boundary are deleted. This is the default behavior.
+
+    * ``Reflecting``: Particles that reach the embedded boundary are specularly reflected back into the simulation domain
+
+    * ``Thermal``: Particles that reach the embedded boundary are re-emitted back into the simulation domain
+      with a thermalized velocity, as from a fully accommodating diffuse wall. The two velocity components
+      tangential to the local surface are sampled from a ``gaussian`` distribution, and the component along
+      the (inward) surface normal is sampled from a ``gaussian flux`` distribution.
+      The standard deviation for these distributions should be provided for each species using
+      ``boundary.<species_name>.u_th`` (in units of :math:`c`, i.e. :math:`\sqrt{k_B T_\mathrm{wall}/m}/c`),
+      the same input used by the domain ``thermal`` particle boundary condition. The same standard
+      deviation is used to sample all components.
 
 .. _param-particle-thermalizer:
 
@@ -1013,7 +1111,8 @@ method used is similar to that of `Miller et al. (Phys. Plasmas 28, 112702 (2021
 The user specifies a region in which particles will be thermalized, a normal direction, a temperature, and a
 momentum threshold. Inside the thermalizing region, the probability that a particle will be affected increases
 from 0 to 1 as :math:`\frac{1}{1-x}^{1/4}`. Particles that are affected have their momenta thermalized
-using the temperature parameter ``theta`` for any direction in which their momentum component is over the threshold.
+using the temperature parameter ``theta`` for any direction in which their momentum component is over the threshold
+(different thresholds can be set for each direction).
 The parameters affecting this region are as follows:
 
 .. pp:param:: particle_thermalizer.normal
@@ -1042,10 +1141,11 @@ The parameters affecting this region are as follows:
     This parameter is required if the thermalizer is enabled.
 
 .. pp:param:: particle_thermalizer.momentum_threshold
-    :type: ``float``
+    :type: ``float`` or ``3 floats``
 
     Momentum threshold used by the thermalizer. In each direction, if a particle's normalized momentum component (e.g. :math:`\gamma \beta_x`) is above this threshold, that component will be thermalized.
-    This parameter is required if the thermalizer is enabled.
+    This parameter is required if the thermalizer is enabled. One or three values can be provided. In the former case, the same threshold is applied in all directions. In the latter, different thresholds
+    are applied to ``x``, ``y``, and ``z`` directions.
 
 .. pp:param:: particle_thermalizer.theta
     :type: ``float``
@@ -1125,13 +1225,13 @@ Distribution across MPI ranks and parallelization
     If the the ratio of the proposed to current distribution mapping *efficiency* (i.e.,
     average cost per MPI process; efficiency is a number in the range [0, 1]) is greater
     than the threshold value, the proposed distribution mapping is adopted.  The suggested
-    range of values is ``algo.load_balance_efficiency_ratio_threshold >= 1``, which ensures
+    range of values is :pp:param:`algo.load_balance_efficiency_ratio_threshold >= 1`, which ensures
     that the new distribution mapping is adopted only if doing so would improve the load
     balance efficiency. The higher the threshold value, the more conservative is the criterion
     for adoption of a proposed distribution; for example, with
-    ``algo.load_balance_efficiency_ratio_threshold = 1``, the proposed distribution is
+    :pp:param:`algo.load_balance_efficiency_ratio_threshold = 1`, the proposed distribution is
     adopted *any* time the proposed distribution improves load balancing; if instead
-    ``algo.load_balance_efficiency_ratio_threshold = 2``, the proposed distribution is
+    :pp:param:`algo.load_balance_efficiency_ratio_threshold = 2`, the proposed distribution is
     adopted only if doing so would yield a 100% to the load balance efficiency (with this
     threshold value, if the  current efficiency is ``0.45``, the new distribution would only be
     adopted if the proposed efficiency were greater than ``0.9``).
@@ -1328,7 +1428,7 @@ Particle initialization
 
     The charge of one *physical* particle of this species.
     If ``species_type`` is specified, the charge will be set to the physical value and ``charge`` is optional.
-    When ``<species_name>.do_field_ionization = 1``, the physical particle charge is equal to ``ionization_initial_level * charge``, so latter parameter should be equal to q_e (which is defined in WarpX as the elementary charge in coulombs).
+    When :pp:param:`<species_name>.do_field_ionization = 1`, the physical particle charge is equal to ``ionization_initial_level * charge``, so latter parameter should be equal to q_e (which is defined in WarpX as the elementary charge in coulombs).
 
 .. pp:param:: <species_name>.mass
     :type: ``float``
@@ -1356,7 +1456,7 @@ Particle initialization
     :optional:
 
     When :pp:param:`<species_name>.xmin` and :pp:param:`<species_name>.xmax` are set, they delimit the region within which particles are injected.
-    If periodic boundary conditions are used in direction ``i``, then the default (i.e. if the range is not specified) range will be the simulation box, ``[geometry.prob_hi[i], geometry.prob_lo[i]]``.
+    If periodic boundary conditions are used in direction ``i``, then the default (i.e. if the range is not specified) range will be the simulation box, :pp:param:`[geometry.prob_hi[i], geometry.prob_lo[i]]`.
 
 .. pp:param:: <species_name>.injection_sources
     :type: ``list of strings``
@@ -1365,13 +1465,13 @@ Particle initialization
     Names of additional injection sources. By default, WarpX assumes one injection source per species, hence all of the input
     parameters below describing the injection are parameters directly of the species. However, this option allows
     additional sources, the names of which are specified here. For each source, the name of the source is added to the
-    input parameters below. For instance, with ``<species_name>.injection_sources = source1 source2`` there can be the two input
+    input parameters below. For instance, with :pp:param:`<species_name>.injection_sources = source1 source2` there can be the two input
     parameters ``<species_name>.source1.injection_style`` and ``<species_name>.source2.injection_style``.
     For the parameters of each source, the parameter with the name of the source will be used.
     If it is not given, the value of the parameter without the source name will be used. This allows parameters used for all
     sources to be specified once. For example, if the ``source1`` and ``source2`` have the same value of ``uz_m``, then it can be
     set using ``<species_name>.uz_m`` instead of setting it for each source.
-    Note that since by default ``<species_name>.injection_style = none``, all injection sources can be input this way.
+    Note that since by default :pp:param:`<species_name>.injection_style = none`, all injection sources can be input this way.
     Note that if a moving window is used, the bulk velocity of all of the sources must be the same since it is used when updating the window.
 
 .. pp:param:: <species_name>.injection_style
@@ -1531,8 +1631,11 @@ Particle initialization
     :default: ``1``
     :optional:
 
-    When using RZ or RCYLINDER geometry, whether to randomize the azimuthal position of particles.
-    This is used when ``<species_name>.injection_style = NUniformPerCell``.
+    When using RZ, RCYLINDER, or RSPHERE geometry, particle azimuthal angles are always defined in the range :math:`(-\pi, \pi]`.
+
+    * For :pp:param:`<species_name>.injection_style = NUniformPerCell` and this flag set to ``true``, a random azimuthal offset is applied independently in each cell. This rotates the particle distribution randomly from cell to cell while keeping angles within :math:`(-\pi, \pi]`.
+
+    * For :pp:param:`<species_name>.injection_style = NRandomPerCell`, this flag essentially does nothing since particle positions are set randomly anyway.
 
 .. pp:param:: <species_name>.do_splitting
     :type: ``bool``
@@ -1603,12 +1706,13 @@ Particle initialization
       It requires additional argument ``<species_name>.density_function(x,y,z)``, which is a
       mathematical expression for the density of the species, e.g.
       ``electrons.density_function(x,y,z) = "n0+n0*x**2*1.e12"`` where ``n0`` is a
-      user-defined constant, see above. WARNING: where ``density_function(x,y,z)`` is close to zero, particles will still be injected between ``xmin`` and ``xmax`` etc., with a null weight. This is undesirable because it results in useless computing. To avoid this, see option ``density_min`` below.
+      user-defined constant, see above.
 
     * ``read_from_file``: load the density profile from an openPMD file.
       An additional parameter, indicating the path of an openPMD data file,
       ``<species_name>.read_density_from_path`` must be specified. The openPMD
-      file must contain a field named ``density``. See
+      file must contain a field with the name given by ``<species_name>.density_mesh_name``
+      (default ``density``). See
       `this file <https://github.com/BLAST-WarpX/warpx/blob/development/Examples/Tests/load_density/inputs_test_3d_load_density_prepare.py>`__
       for an example of how to prepare the openPMD data file. There is
       another optional parameter,
@@ -1624,7 +1728,7 @@ Particle initialization
 .. pp:param:: <species_name>.flux_profile
     :type: ``string``
 
-    Defines the expression of the flux, when using ``<species_name>.injection_style=NFluxPerCell``
+    Defines the expression of the flux, when using :pp:param:`<species_name>.injection_style = NFluxPerCell`
 
     * ``constant``: Constant flux. This requires the additional parameter ``<species_name>.flux``.
       i.e., the injection flux in :math:`m^{-2}.s^{-1}`.
@@ -1639,6 +1743,10 @@ Particle initialization
     :optional:
 
     Minimum plasma density. No particle is injected where the density is below this value.
+    This is useful because, where the density is close to zero, particles would otherwise
+    still be injected between ``xmin`` and ``xmax`` etc., with a null weight. This is
+    undesirable because it results in useless computing. This option applies to all density
+    profiles (``constant``, ``parse_density_function`` and ``read_from_file``).
 
 .. pp:param:: <species_name>.density_max
     :type: ``float``
@@ -1646,6 +1754,7 @@ Particle initialization
     :optional:
 
     Maximum plasma density. The density at each point is the minimum between the value given in the profile, and ``density_max``.
+    This option applies to all density profiles (``constant``, ``parse_density_function`` and ``read_from_file``).
 
 .. pp:param:: <species_name>.radial_numpercell_power
     :type: ``float``
@@ -1695,93 +1804,118 @@ Particle initialization
       ``<species_name>.uy_th`` and ``<species_name>.uz_th``.
       ``ux_m``, ``uy_m``, ``uz_m``, ``ux_th``, ``uy_th`` and ``uz_th`` are all ``0.`` by default.
 
-    * ``maxwell_boltzmann``: Maxwell-Boltzmann distribution that takes a dimensionless
-      temperature parameter :math:`\theta` as an input, where :math:`\theta = \frac{k_\mathrm{B} \cdot T}{m \cdot c^2}`,
-      :math:`T` is the temperature in Kelvin, :math:`k_\mathrm{B}` is the Boltzmann constant, :math:`c` is the speed of light, and :math:`m` is the mass of the species.
-      Theta is specified by a combination of :pp:param:`<species_name>.theta_distribution_type`, ``<species_name>.theta``, and ``<species_name>.theta_function(x,y,z)`` (see below).
-      For values of :math:`\theta > 0.01`, errors due to ignored relativistic terms exceed 1%.
-      Temperatures less than zero are not allowed.
-      The plasma can be initialized to move at a bulk velocity :math:`\beta = v/c`.
-      The speed is specified by the parameters :pp:param:`<species_name>.beta_distribution_type`, ``<species_name>.beta``, and ``<species_name>.beta_function(x,y,z)`` (see below).
-      :math:`\beta` can be positive or negative and is limited to the range :math:`-1 < \beta < 1`.
-      The direction of the velocity field is given by ``<species_name>.bulk_vel_dir = (+/-) 'x', 'y', 'z'``, and must be the same across the domain.
-      Please leave no whitespace
-      between the sign and the character on input. A direction without a sign will be treated as
-      positive. The MB distribution is initialized in the drifting frame by sampling three Gaussian
-      distributions in each dimension using, the Box Mueller method, and then the distribution is
-      transformed to the simulation frame using the flipping method. The flipping method can be
-      found in Zenitani 2015 section III. B. (Phys. Plasmas 22, 042116).
-      By default, ``beta`` is equal to ``0.`` and ``bulk_vel_dir`` is ``+x``.
+    * ``maxwellian``: Maxwellian momentum distribution. The mean normalized momentum (bulk drift) and the standard deviation (thermal spread) of each
+      momentum component can be specified independently. They can be given either as constants or as functions of position.
+      Each normalized-momentum component is sampled independently from a Gaussian distribution.
 
-      Note that though the particles may move at relativistic speeds in the simulation frame,
-      they are not relativistic in the drift frame. This is as opposed to the Maxwell Juttner
-      setting, which initializes particles with relativistic momentums in their drifting frame.
+      It requires the following arguments:
 
-    * ``maxwell_juttner``: Maxwell-Juttner distribution for high temperature plasma that takes a dimensionless temperature parameter :math:`\theta` as an input, where :math:`\theta = \frac{k_\mathrm{B} \cdot T}{m \cdot c^2}`,
-      :math:`T` is the temperature in Kelvin, :math:`k_\mathrm{B}` is the Boltzmann constant, and :math:`m` is the mass of the species.
-      Theta is specified by a combination of :pp:param:`<species_name>.theta_distribution_type`, ``<species_name>.theta``, and ``<species_name>.theta_function(x,y,z)`` (see below).
-      The Sobol method used to generate the distribution will not terminate for :math:`\theta \lesssim 0.1`, and the code will abort if it encounters a temperature below that threshold.
-      The Maxwell-Boltzmann distribution is recommended for temperatures in the range :math:`0.01 < \theta < 0.1`.
-      Errors due to relativistic effects can be expected to approximately between 1% and 10%.
-      The plasma can be initialized to move at a bulk velocity :math:`\beta = v/c`.
-      The speed is specified by the parameters :pp:param:`<species_name>.beta_distribution_type`, ``<species_name>.beta``, and ``<species_name>.beta_function(x,y,z)`` (see below).
-      :math:`\beta` can be positive or negative and is limited to the range :math:`-1 < \beta < 1`.
-      The direction of the velocity field is given by ``<species_name>.bulk_vel_dir = (+/-) 'x', 'y', 'z'``, and must be the same across the domain.
-      Please leave no whitespace
-      between the sign and the character on input. A direction without a sign will be treated as
-      positive. The MJ distribution will be initialized in the moving frame using the Sobol method,
-      and then the distribution will be transformed to the simulation frame using the flipping method.
-      Both the Sobol and the flipping method can be found in Zenitani 2015 (Phys. Plasmas 22, 042116).
-      By default, ``beta`` is equal to ``0.`` and ``bulk_vel_dir`` is ``+x``.
+      * ``<species_name>.maxwellian_u_mean_distribution_type`` (`string`, default ``constant``):
+        Specifies the distribution type for the bulk (mean) particle momentum ``u_mean``.
+        Here, ``u_mean`` is a 3D vector (with components ``ux_mean``, ``uy_mean``, ``uz_mean``)
+        representing the normalized momentum, defined as
+        :math:`u_\mathrm{mean} = \gamma \beta`, where
+        :math:`\beta = v/c` and :math:`\gamma = 1/\sqrt{1-\beta^2}`.
 
-      Please take notice that particles initialized with this setting can be relativistic in two ways.
-      In the simulation frame, they can drift with a relativistic speed beta. Then, in the drifting
-      frame they are still moving with relativistic speeds due to high temperature. This is as opposed
-      to the Maxwell Boltzmann setting, which initializes non-relativistic plasma in their relativistic
-      drifting frame.
+        * If ``constant``, the following are required: ``<species_name>.ux_mean``,
+          ``<species_name>.uy_mean``, ``<species_name>.uz_mean`` (`float`, default ``0``).
+          The magnitude :math:`|u_\mathrm{mean}|` must be strictly less than 1.
+        * If ``parser``, the following are required:
+          ``<species_name>.ux_mean_function(x,y,z)``,
+          ``<species_name>.uy_mean_function(x,y,z)``,
+          ``<species_name>.uz_mean_function(x,y,z)``.
+        * If ``read_from_file``, ``u_mean`` is read as a function of position from an openPMD
+          file and interpolated to the particle positions (requires a WarpX build with openPMD;
+          not supported yet in ``RZ`` / ``RCYLINDER`` / ``RSPHERE``). The following is required:
+          ``<species_name>.read_u_mean_from_path`` (openPMD file path). The file must contain
+          an openPMD vector record ``u_mean`` with components ``x``, ``y`` and ``z``. See
+          `this file <https://github.com/BLAST-WarpX/warpx/blob/development/Examples/Tests/initial_distribution/inputs_test_3d_initial_distribution_prepare.py>`__
+          for an example of how to prepare the openPMD data file.
+
+      * ``<species_name>.maxwellian_u_std_distribution_type`` (`string`, default ``constant``):
+        Specifies the distribution type for the thermal spread (standard deviation) of the
+        particle momentum. Here, ``u_std`` is a 3D vector (with components ``ux_std``,
+        ``uy_std``, ``uz_std``) representing the standard deviation of the normalized momentum
+        :math:`u_\mathrm{std} = \sqrt{\theta}`, where
+        :math:`\theta = \frac{k_\mathrm{B} \cdot T}{m \cdot c^2}`.
+
+        * If ``constant``, the following are required: ``<species_name>.ux_std``,
+          ``<species_name>.uy_std``, ``<species_name>.uz_std`` (`float`, default ``0``).
+          These are standard deviations of :math:`u_x`, :math:`u_y`, :math:`u_z` in the drift
+          frame, i.e. the thermal spread per axis.
+        * If ``parser``, the following are required:
+          ``<species_name>.ux_std_function(x,y,z)``,
+          ``<species_name>.uy_std_function(x,y,z)``,
+          ``<species_name>.uz_std_function(x,y,z)``.
+        * If ``read_from_file``, ``u_std`` is read as a function of position from an openPMD
+          file and interpolated to the particle positions (requires a WarpX build with openPMD;
+          not supported yet in ``RZ`` / ``RCYLINDER`` / ``RSPHERE``). The following is required:
+          ``<species_name>.read_u_std_from_path`` (openPMD file path). The file must contain
+          an openPMD vector record ``u_std`` with components ``x``, ``y`` and ``z``. See
+          `this file <https://github.com/BLAST-WarpX/warpx/blob/development/Examples/Tests/initial_distribution/inputs_test_3d_initial_distribution_prepare.py>`__
+          for an example of how to prepare the openPMD data file.
+
+        Particles may be relativistic in the lab frame, but the sampling model treats them as
+        non-relativistic in the drift frame. For a relativistic thermal spread, use ``maxwell_juttner`` instead.
+
+    * ``maxwell_juttner``: Maxwell-Juttner distribution for relativistic plasma.
+      More specifically, the plasma is initialized with a Maxwell-Juttner distribution
+
+      .. math::
+
+        p(\mathbf{u}) \propto \exp(-\gamma(\mathbf{u})mc^2/k_B T) = \exp(-\gamma (\mathbf{u})/\theta)
+
+      (with :math:`\gamma(\mathbf{u}) = \sqrt{1+\mathbf{u}^2}` and :math:`\theta = k_B T/m c^2`) in a
+      **drifting Lorentz frame** that is moving with a bulk velocity specified by the normalized momentum
+      :math:`\boldsymbol{u}_{\rm mean} = (u_{x,{\rm mean}}, u_{y,{\rm mean}}, u_{z,{\rm mean}}) = \gamma \boldsymbol{v}/c` (see below).
+      Thus, particles can potentially be relativistic in two ways: by having relativistic bulk drift :math:`\beta`
+      in the lab frame, and/or by having high temperature :math:`\theta` in the drift frame.
+
+      It requires the following arguments:
+
+      * ``<species_name>.maxwell_juttner_u_mean_distribution_type`` (`string`, default ``constant``):
+        Specifies the distribution type for the bulk (mean) particle momentum ``u_mean``.
+        Here, ``u_mean`` is a 3D vector (with components ``ux_mean``, ``uy_mean``, ``uz_mean``)
+        representing the normalized momentum, defined as
+        :math:`\boldsymbol{u}_\mathrm{mean} = \gamma \boldsymbol{\beta}`, where
+        :math:`\boldsymbol{\beta} = \boldsymbol{v}/c` and :math:`\gamma = 1/\sqrt{1-|\boldsymbol{\beta}|^2}`.
+        The distribution is boosted from the drift frame to the simulation frame along the
+        direction of :math:`\boldsymbol{u}_\mathrm{mean}`; the bulk velocity :math:`|\boldsymbol{\beta}|` derived from
+        :math:`\boldsymbol{u}_\mathrm{mean}` is therefore always in the physical range :math:`|\boldsymbol{\beta}| < 1`.
+
+        * If ``constant``, the following are required: ``<species_name>.ux_mean``,
+          ``<species_name>.uy_mean``, ``<species_name>.uz_mean`` (`float`, default ``0``).
+        * If ``parser``, the following are required:
+          ``<species_name>.ux_mean_function(x,y,z)``,
+          ``<species_name>.uy_mean_function(x,y,z)``,
+          ``<species_name>.uz_mean_function(x,y,z)``.
+        * If ``read_from_file``, ``u_mean`` is read as a function of position from an openPMD
+          file and interpolated to the particle positions (requires a WarpX build with openPMD;
+          not supported yet in ``RZ`` / ``RCYLINDER`` / ``RSPHERE``). The following is required:
+          ``<species_name>.read_u_mean_from_path`` (openPMD file path). The file must contain
+          an openPMD vector record ``u_mean`` with components ``x``, ``y`` and ``z``. See
+          `this file <https://github.com/BLAST-WarpX/warpx/blob/development/Examples/Tests/initial_distribution/inputs_test_3d_initial_distribution_prepare.py>`__
+          for an example of how to prepare the openPMD data file.
+
+      * ``<species_name>.theta_distribution_type`` (`string`, default ``constant``):
+        Specifies the distribution type for the temperature :math:`\theta`.
+        Values less than zero are not allowed.
+
+        * If ``constant``, the following is required: ``<species_name>.theta`` (`float`).
+        * If ``parser``, the following is required: ``<species_name>.theta_function(x,y,z)``.
+
+      Sampling uses the Sobol and flipping methods described in :cite:t:`param-ZenitaniPOP2015`.
+      For :math:`\theta \lesssim 0.1`, the Sobol method becomes inefficient (its acceptance
+      efficiency tends to zero as :math:`\theta \rightarrow 0`) and, at the same time, the Maxwell-Juttner
+      distribution becomes almost indistinguishable from a non-relativistic Maxwellian.
+      Thus, for :math:`\theta < 0.1`, the code instead samples an isotropic Maxwellian with thermal spread
+      :math:`\sqrt{\theta}` per component in the drift frame, then applies the same flipping
+      method and Lorentz transform as for the Sobol-sampled momenta.
 
     * ``parse_momentum_function``: the momentum :math:`u = (u_{x},u_{y},u_{z})=(\gamma v_{x}/c,\gamma v_{y}/c,\gamma v_{z}/c)` is given by a function in the input
       file. It requires additional arguments ``<species_name>.momentum_function_ux(x,y,z)``,
       ``<species_name>.momentum_function_uy(x,y,z)`` and ``<species_name>.momentum_function_uz(x,y,z)``,
-      which gives the distribution of each component of the momentum as a function of space.
-
-    * ``gaussian_parse_momentum_function``: Gaussian momentum distribution where the mean and the standard deviation are given by functions of position in the input file.
-      Both are assumed to be non-relativistic.
-      The mean is the normalized momentum, :math:`u_m = \gamma v_m/c`.
-      The standard deviation is normalized, :math:`u_{th} = v_{th}/c`.
-      For example, this might be ``u_th = sqrt(T*q_e/mass)/clight`` given the temperature (in eV) and mass.
-      It requires the following arguments:
-
-      * ``<species_name>.momentum_function_ux_m(x,y,z)``: mean :math:`u_{x}`
-      * ``<species_name>.momentum_function_uy_m(x,y,z)``: mean :math:`u_{y}`
-      * ``<species_name>.momentum_function_uz_m(x,y,z)``: mean :math:`u_{z}`
-      * ``<species_name>.momentum_function_ux_th(x,y,z)``: standard deviation of :math:`u_{x}`
-      * ``<species_name>.momentum_function_uy_th(x,y,z)``: standard deviation of :math:`u_{y}`
-      * ``<species_name>.momentum_function_uz_th(x,y,z)``: standard deviation of :math:`u_{z}`
-
-.. pp:param:: <species_name>.theta_distribution_type
-    :type: ``string``
-    :default: ``constant``
-    :optional:
-
-    Only read if :pp:param:`<species_name>.momentum_distribution_type` is ``maxwell_boltzmann`` or ``maxwell_juttner``.
-    See documentation for these distributions (above) for constraints on values of theta. Temperatures less than zero are not allowed.
-
-    * If ``constant``, use a constant temperature, given by the required float parameter ``<species_name>.theta``.
-
-    * If ``parser``, use a spatially-dependent analytic parser function, given by the required parameter ``<species_name>.theta_function(x,y,z)``.
-
-.. pp:param:: <species_name>.beta_distribution_type
-    :type: ``string``
-    :default: ``constant``
-    :optional:
-
-    Only read if :pp:param:`<species_name>.momentum_distribution_type` is ``maxwell_boltzmann`` or ``maxwell_juttner``.
-    See documentation for these distributions (above) for constraints on values of beta.
-
-    * If ``constant``, use a constant speed, given by the required float parameter ``<species_name>.beta``.
-
-    * If ``parser``, use a spatially-dependent analytic parser function, given by the required parameter ``<species_name>.beta_function(x,y,z)``.
+      which give the distribution of each component of the momentum as a function of space.
 
 .. pp:param:: <species_name>.zinject_plane
     :type: ``float``
@@ -1901,7 +2035,7 @@ Particle initialization
     buffer for the specified boundary if they leave the simulation domain in
     the specified direction. **If USE_EB=TRUE** the ``save_particles_at_eb``
     flag can be set to ``1`` to also save particle data for the particles of this
-    species that impact the embedded boundary.
+    species that are absorbed at the embedded boundary.
     The scraped particle buffer can be used to track particle fluxes out of the
     simulation.
     The particle data can be written out by setting up a ``BoundaryScrapingDiagnostic``.
@@ -2390,19 +2524,19 @@ Laser initialization
 
 .. pp:param:: warpx.mirror_z
     :type: list of ``float``
-    :comment: required if ``warpx.num_mirrors>0``
+    :comment: required if :pp:param:`warpx.num_mirrors > 0`
 
     ``z`` location of the front of the mirrors.
 
 .. pp:param:: warpx.mirror_z_width
     :type: list of ``float``
-    :comment: required if ``warpx.num_mirrors>0``
+    :comment: required if :pp:param:`warpx.num_mirrors > 0`
 
     ``z`` width of the mirrors.
 
 .. pp:param:: warpx.mirror_z_npoints
     :type: list of ``int``
-    :comment: required if ``warpx.num_mirrors>0``
+    :comment: required if :pp:param:`warpx.num_mirrors > 0`
 
     In the boosted frame, depending on ``gamma_boost``, :pp:param:`warpx.mirror_z_width`
     can be smaller than the cell size, so that the mirror would not work. This
@@ -2501,8 +2635,8 @@ are applied to the grid directly. In particular, these fields can be seen in the
         warpx.B_external_grid
     :type: list of ``3 floats``
 
-    required when ``warpx.E_ext_grid_init_style="constant"``
-    and when ``warpx.B_ext_grid_init_style="constant"``, respectively.
+    required when :pp:param:`warpx.E_ext_grid_init_style = "constant"`
+    and when :pp:param:`warpx.B_ext_grid_init_style = "constant"`, respectively.
     External uniform and constant electrostatic and magnetostatic field added
     to the grid at initialization. Use with caution as these fields are used for
     the field solver. In particular, do not use any other boundary condition
@@ -2799,23 +2933,48 @@ Details about the collision models can be found in the :ref:`theory section <mul
       Currently, WarpX supports deuterium-deuterium, deuterium-tritium, deuterium-helium and proton-boron fusion.
       When initializing the reactant and product species, you need to use ``species_type`` (see the documentation
       for this parameter), so that WarpX can identify the type of reaction to use.
-      (e.g. ``<species_name>.species_type = 'deuterium'``)
+      (e.g. :pp:param:`<species_name>.species_type = 'deuterium'`)
     - ``dsmc`` for pair-wise, non-Coulomb collisions between kinetic species.
       This is a "direct simulation Monte Carlo" treatment of collisions between
       kinetic species. See :ref:`DSMC section <multiphysics-collisions-dsmc>`.
     - ``background_mcc`` for collisions between particles and a neutral background.
       This is a relativistic Monte Carlo treatment for particles colliding
       with a neutral background gas. See :ref:`MCC section <multiphysics-collisions-mcc>`.
+    - ``pulsed_decay`` for decay of a parent species into two product species with a user-defined decay rate.
+      See :ref:`Pulsed Decay section <multiphysics-collisions-pulseddecay>`.
     - ``background_stopping`` for slowing of ions due to collisions with electrons or ions.
       This implements the approximate formulae as derived in Introduction to Plasma Physics,
       from Goldston and Rutherford, section 14.2.
+    - ``hybrid_resistive_drag`` for the ion side of the electron-ion friction in the
+      hybrid-PIC (Ohm's law) solver (requires :pp:param:`algo.maxwell_solver` = ``hybrid``).
+      Each species' bulk velocity is relaxed toward the electron fluid velocity at the rate
+      :math:`\nu_{s,e} = Z_s e^2 \eta_{s,\mathrm{eff}} n_e / m_s` implied by the Ohm's-law
+      resistivity (global plus the optional per-species overlay,
+      :pp:param:`hybrid_pic_model.plasma_resistivity_<species>(rho_s,rho,Te,J,J_s,B,t)`),
+      via a velocity-independent bulk-velocity shift
+      :math:`(\boldsymbol{V}_s - \boldsymbol{V}_e)\left(1 - e^{-\nu_{s,e}\Delta t}\right)`
+      gathered at each particle's position, which decelerates the bulk drift while
+      preserving the thermal spread to leading order in field gradients. When this collision
+      is registered the resistive terms of Ohm's law are also included in the E-field that
+      pushes the particles (not only in the Faraday solves), because the drag and the
+      resistive push-field force are the two halves of the friction and only their sum
+      conserves momentum; for a global resistivity the two cancel exactly, recovering the
+      plain-``eta`` behavior. For that reason the collision must be registered on every
+      charged species (non-depositing tracer species are exempt; species with negative
+      charge are not supported and are rejected at initialization).
+      It takes exactly one species and no type-specific parameters,
+      though the generic :pp:param:`<collision_name>.ndt_supercycle` and
+      :pp:param:`<collision_name>.ndt_subcycle` options still apply.
     - ``bremsstrahlung`` for slowing of electrons due to Bremsstrahlung collisions with ions.
       This uses the cross sections as given by `Seltzer and Berger <https://doi.org/10.1016/0092-640X(86)90014-8>`__.
+    - ``inverse_bremsstrahlung`` for inverse bremstrahlung absorption of photons from the collisions of electrons and ions.
+      The absorbed energy and momentum from the photons is distributed among the electrons in the cell so that the quantities are exactly conserved.
     - ``linear_breit_wheeler`` for electron-positron pair creation from the annihilation of two photons, according to the linear Breit-Wheeler mechanism
       (see for example `Gould et al. (Phys. Rev. 155, 1404, 1967) <https://doi.org/10.1103/PhysRev.155.1404>`__).
       This implements the generation of electron-positron pairs based on the analytical cross-section, e.g.
-      equation (1) in Gould. The angular distribution of the emitted pairs is isotropic for now
-      (instead of following the correct distribution, see e.g. `Ribeyre et al. (Plasma Phys. Control. Fusion 60 104001, 2018) <https://doi.org/10.1088/1361-6587/aad6da>`__).
+      equation (1) in Gould. In the center-of-momentum frame, the polar angle of the emitted pairs
+      is sampled from the differential cross section, while the azimuthal angle is sampled uniformly
+      (see e.g. `Ribeyre et al. (Plasma Phys. Control. Fusion 60 104001, 2018) <https://doi.org/10.1088/1361-6587/aad6da>`__).
       The implementation follows the same numerical algorithm as that of fusion reactions (see. :cite:t:`param-HigginsonJCP2019`).
     - ``linear_compton`` for linear Compton scattering between a lepton (electron or positron, for now) and a photon, based on the Klein-Nishina cross-section
       (see for example :cite:t:`param-LandauVol4`: equations 86.10 and 86.16 for the differential and total cross sections, respectively).
@@ -2830,15 +2989,21 @@ Details about the collision models can be found in the :ref:`theory section <mul
 .. pp:param:: <collision_name>.species
     :type: ``strings``
 
-    If using ``dsmc``, ``pairwisecoulomb``, ``nuclearfusion``, or ``bremsstrahlung``, this should be the name(s) of the species,
+    If using ``dsmc``, ``pairwisecoulomb``, ``nuclearfusion``, ``bremsstrahlung``, or ``inverse_bremsstrahlung`` this should be the name(s) of the species,
     between which the collision will be considered. (Provide only one name for intra-species collisions.)
     With ``bremsstrahlung``, the electron species must be given first, followed by the target species.
+    Wtih ``inverse_bremsstrahlung``, this is the photon species being absorbed and the electron species they are colliding with, in that order.
     If using ``background_mcc`` or ``background_stopping`` type this should be the name of the
     species for which collisions with a background will be included.
-    In this case, only one species name should be given.
+    If using ``pulsed_decay`` type this should be the name of the parent species.
+    If using ``hybrid_resistive_drag``, this should be the one ion species the drag is applied to.
+    In these four cases, only one species name should be given.
     If using ``linear_breit_wheeler`` these should be two photon species.
     If using ``linear_compton``, these should be two species: first, a photon species, and second, a lepton species, in this exact order.
-
+    If using two-product ``nuclearfusion`` with ``scattering_angle_model = legendre``, consider the reaction to be ordered as ``A + B -> C + D``.
+    The first entry in ``species`` must be the incident reactant ``A``, and the second must be the target reactant ``B``.
+    The scattering angle is measured between the momenta of ``A`` and ``C`` in the center-of-momentum frame.
+    For example, T(d,n)He4 corresponds to ``d + T -> n + He4``, so ``species`` must list the deuterium species first and the tritium species second.
 
 .. pp:param:: <collision_name>.product_species
     :type: ``strings``
@@ -2846,10 +3011,14 @@ Details about the collision models can be found in the :ref:`theory section <mul
     Only for ``dsmc``, ``linear_breit_wheeler``, ``nuclearfusion``, and ``bremsstrahlung``.
     The name(s) of the species in which to add the new macroparticles created by the reaction.
     If using ``dsmc`` with ionization reactions, the first species in this list must be an electron.
-    If using ``dsmc`` with ``charge_exchange`` and ``twoproduct_reaction``, the order of the ``product_species`` should match the order of the species in :pp:param:`<collision_name>.species`.
+    If using ``dsmc`` with ``charge_exchange`` and ``two_product_reaction``, the order of the ``product_species`` should match the order of the species in :pp:param:`<collision_name>.species`.
     If using ``linear_breit_wheeler`` these should be two species: one of electrons and one of positrons.
     If using ``bremsstrahlung``, the product species must be of type photon.
     If using ``linear_compton``, these should be two species: first, a photon species, and second, a lepton species, in this exact order.
+    If using ``pulsed_decay``, the sum of the product species charges and mass must equal those of the parent species.
+    If using two-product ``nuclearfusion`` with ``scattering_angle_model = legendre``, consider the reaction to be ordered as ``A + B -> C + D``, as described for :pp:param:`<collision_name>.species`.
+    The first entry in ``product_species`` must be product ``C``, and the second must be product ``D``.
+    For example, T(d,n)He4 corresponds to ``d + T -> n + He4``, so ``product_species`` must list the neutron first and helium4 second.
 
 .. pp:param:: <collision_name>.ndt_supercycle
     :type: ``int``
@@ -2867,6 +3036,27 @@ Details about the collision models can be found in the :ref:`theory section <mul
     The effective collision time step is ``dt_collision = dt_PIC / ndt_subcycle``.
     Must be >= 1. Mutually exclusive with ``ndt_supercycle``.
     Useful when a large PIC time step is desired but collisions require finer time resolution.
+
+.. pp:param:: <collision_name>.start_step
+    :type: ``int``
+    :default: ``0``
+    :optional:
+
+    First time step on which the collision is applied. Must be >= 0.
+    When used with ``ndt_supercycle``, this acts as an offset: the collision is executed
+    on steps ``start_step``, ``start_step + ndt_supercycle``, ``start_step + 2*ndt_supercycle``, etc.
+    When used with ``ndt_subcycle``, the collision is subcycled on every step starting from ``start_step``.
+
+.. pp:param:: <collision_name>.cumulative_scattering_angle_model
+    :type: ``string``
+    :default: ``bobylev``
+    :optional:
+
+    Only for ``pairwisecoulomb``. Specifies the cumulative scattering distribution used to compute the scattering angle.
+    The possible values are ``bobylev`` and ``nanbu``.
+    With ``bobylev``, the scattering angle is sampled from Bobylev's distribution (see :cite:t:`param-BobylevJCP2013`).
+    With ``nanbu``, the scattering angle is sampled from Nanbu's distribution (see :cite:t:`param-NanbuPRE1997`).
+    See :cite:t:`param-AngusJCP2025` and :cite:t:`param-AngusJCP2026` for further discussion of cumulative scattering distributions.
 
 .. pp:param:: <collision_name>.CoulombLog
     :type: ``float``
@@ -2935,9 +3125,60 @@ Details about the collision models can be found in the :ref:`theory section <mul
     :optional:
 
     Only for ``nuclearfusion``. The scattering angle for the products of the fusion reaction.
-    The possible values are ``isotropic`` and ``forward``.
+    The possible values are ``isotropic``, ``forward``, ``backward``, and ``legendre``.
     With ``isotropic``, the scattering angle is drawn from an isotropic distribution.
-    With ``forward``, the scattering angle is set to zero, i.e. the products are emitted in the same direction as the reactant.
+    With ``forward``, the scattering angle is set to zero, i.e. the products are emitted in the same direction as the reactant (in the center of mass frame).
+    With ``backward``, the scattering angle is set to :math:`\pi`, i.e. the products are emitted in the opposite direction of the reactant (in the center of mass frame).
+    With ``legendre``, the scattering angle is drawn from the anisotropic distribution represented by a Legendre expansion of the differential cross section of the fusion reaction.
+    For a two-product reaction written as ``A + B -> C + D``, the anisotropic distribution gives the angle between the momenta of the incident reactant ``A`` and product ``C`` in the center-of-momentum frame.
+    Therefore, :pp:param:`<collision_name>.species` must be ordered as ``A B``, and :pp:param:`<collision_name>.product_species` must be ordered as ``C D``.
+    See :cite:t:`param-VanDeWeteringPRE2025` for a discussion of the importance of anisotropic scattering for nuclear fusion reactions.
+
+.. pp:param:: <collision_name>.legendre_angular_distribution_coefficients
+    :type: ``string``
+    :optional:
+
+    Only for ``nuclearfusion``.
+    Path to an energy-dependent table of Legendre coefficients used by the ``legendre`` scattering angle model.
+    Each nonempty row contains a center-of-mass energy in eV followed by all coefficients from order zero upward.
+    The zeroth-order coefficient and at least one higher-order coefficient are required.
+    At least two rows are required, and their energies must be strictly increasing.
+    For two-product fusion written as ``A + B -> C + D``, these coefficients describe the angle between the momenta of the incident reactant ``A`` and product ``C`` in the center-of-momentum frame.
+    Example coefficient tables are available in the `WarpX data repository <https://github.com/BLAST-WarpX/warpx-data/tree/master/nuclear_fusion>`__.
+
+.. pp:param:: <collision_name>.legendre_angular_distribution_coefficients_format
+    :type: ``string``
+
+    Format of :pp:param:`<collision_name>.legendre_angular_distribution_coefficients`.
+    This parameter is required when a coefficient table is specified.
+    ``ENDF`` selects the orthonormal Legendre coefficients defined by the ENDF-6 format :cite:p:`param-BrownENDF2023`, which WarpX uses as given.
+    ``IAEA`` selects the non-orthonormal coefficients tabulated by :cite:t:`param-DrosgOtukaIAEA2015`.
+    WarpX converts every IAEA coefficient before use according to
+
+    .. math::
+
+       L_l^{\mathrm{ENDF}} = \frac{L_l^{\mathrm{IAEA}}/L_0^{\mathrm{IAEA}}}{2l+1}.
+
+    The value is case-insensitive.
+    The zeroth-order IAEA coefficient must be nonzero in every row.
+    Example coefficient tables are available in the `WarpX data repository <https://github.com/BLAST-WarpX/warpx-data/tree/master/nuclear_fusion>`__.
+
+.. pp:param:: <collision_name>.create_products
+    :type: ``bool``
+    :default: ``1``
+    :optional:
+
+    Only for ``nuclearfusion``. When true, the product particles are created, otherwise not.
+
+.. pp:param:: <collision_name>.save_particle_production
+    :type: ``bool``
+    :default: ``0``
+    :optional:
+
+    Only for ``nuclearfusion``.
+    When true, the integrated product particle density is saved in a MultiFab with the name ``<collision_name>_particle_production``.
+    The data can be written out by adding that name to the ``<diag_name>.fields_to_plot`` input parameter.
+    The option can be used in conjunction with ``<collision_name>.create_products`` to save only the product density and not create particles.
 
 .. pp:param:: <collision_name>.background_density
     :type: ``float``
@@ -2948,12 +3189,18 @@ Details about the collision models can be found in the :ref:`theory section <mul
     is used for the background density, the input parameter ``<collision_name>.max_background_density``
     must also be provided to calculate the maximum collision probability.
 
+    The arguments ``x``, ``y`` and ``z`` are the Cartesian coordinates of the macroparticle, in every
+    geometry. In ``RZ``, ``RCYLINDER`` and ``RSPHERE`` geometry this means that the radius must be
+    written as ``sqrt(x**2+y**2)`` (``RZ``, ``RCYLINDER``) or ``sqrt(x**2+y**2+z**2)`` (``RSPHERE``),
+    and in 2D (``XZ``) geometry ``y`` is always 0.
+
 .. pp:param:: <collision_name>.background_temperature
     :type: ``float``
 
     Only for ``background_mcc`` and ``background_stopping``. The temperature of the background in Kelvin.
     Can also provide ``<collision_name>.background_temperature(x,y,z,t)`` using the parser
-    initialization style for spatially and temporally varying temperature.
+    initialization style for spatially and temporally varying temperature. The arguments follow the
+    same convention as for :pp:param:`<collision_name>.background_density`.
 
 .. pp:param:: <collision_name>.background_mass
     :type: ``float``
@@ -3006,28 +3253,52 @@ Details about the collision models can be found in the :ref:`theory section <mul
     :type: ``strings`` separated by spaces
 
     Only for ``dsmc`` and ``background_mcc``. The scattering processes that should be
-    included. Available options are ``elastic``, ``excitationX``, ``forward``, ``back``, ``twoproduct_reaction`` and ``charge_exchange``
-    for ions and ``elastic``, ``excitationX``, ``ionization`` & ``forward`` for electrons.
-    Multiple excitation events can be included for electrons corresponding to
-    excitation to different levels, the ``X`` above can be changed to a unique
-    identifier for each excitation process. For each scattering process specified
+    included. Available options are ``elasticX``, ``excitationX``, ``two_product_reaction`` and ``charge_exchange``
+    for ions and ``elasticX``, ``excitationX`` and ``ionization`` for electrons.
+    Multiple elastic and excitation events can be included, corresponding e.g. to
+    excitation to different levels or to several elastic channels (with different
+    cross-sections and/or scattering angle models); the ``X`` above can be changed
+    to a unique identifier for each such process. For each scattering process specified
     a path to a cross-section data file must also be given. We use
     ``<scattering_process>`` as a placeholder going forward.
+
+    For ``elasticX``, ``excitationX``, ``charge_exchange`` and ``two_product_reaction``, the
+    angular distribution is controlled by the per-process
+    :pp:param:`<collision_name>.<scattering_process>_scattering_angle_model` argument.
 
 .. pp:param:: <collision_name>.<scattering_process>_cross_section
     :type: ``string``
 
     Only for ``dsmc`` and ``background_mcc``. Path to the file containing cross-section data
     for the given scattering processes. The cross-section file must have exactly
-    2 columns of data, the first containing equally spaced energies in eV and the
+    2 columns of data, the first containing energies in eV and the
     second the corresponding cross-section in :math:`m^2`. The energy column should
-    represent the kinetic energy of the colliding particles in the center-of-mass frame.
+    represent the kinetic energy of the center-of-mass frame. The energy values in this column
+    must be in strictly increasing order.
 
 .. pp:param:: <collision_name>.<scattering_process>_energy
     :type: ``float``
 
-    Only for ``dsmc`` and ``background_mcc``. If the scattering process is either
-    ``excitationX``, ``ionization`` or ``twoproduct_reaction``, the energy cost of that process must be given in eV.
+    Only for ``dsmc`` and ``background_mcc``. The energy cost of the process, in eV. It is
+    required for ``excitationX`` and ``ionization``, optional for ``charge_exchange`` and
+    ``two_product_reaction`` (which may impose a fixed energy loss, defaulting to 0), and
+    ignored for ``elasticX`` processes (which have no energy cost).
+
+.. pp:param:: <collision_name>.<scattering_process>_scattering_angle_model
+    :type: ``string``
+    :optional:
+
+    Only for ``dsmc`` and ``background_mcc``, and only for ``elasticX``, ``excitationX``,
+    ``charge_exchange`` and ``two_product_reaction``.
+    The model used to determine the scattering angle of the products
+    in the center-of-mass frame. The possible values are ``isotropic``, ``forward`` and ``backward``.
+    The default is ``isotropic`` for ``elasticX`` and ``excitationX``, and ``forward`` for
+    ``charge_exchange`` and ``two_product_reaction``.
+    With ``isotropic``, the scattering angle is drawn from an isotropic distribution.
+    With ``forward``, the scattering angle is set to zero, i.e. the products keep the same direction
+    as the incident particle (in the center of mass frame).
+    With ``backward``, the scattering angle is set to :math:`\pi`, i.e. the products are emitted in
+    the opposite direction of the incident particle (in the center of mass frame).
 
 .. pp:param:: <collision_name>.ionization_species
     :type: ``float``
@@ -3041,6 +3312,29 @@ Details about the collision models can be found in the :ref:`theory section <mul
 
     Only for ``dsmc`` with impact ionization. This specifies which one of the
     colliding particles is ionized.
+
+.. pp:param:: <collision_name>.decay_rate(x,y,z,t)
+    :type: `string`
+
+    The parent species decay rate (only for ``pulsed_decay``).
+
+.. pp:param:: <collision_name>.fixed_product_weight
+    :type: `float`
+
+    Fixed particle weight of product species (only for ``pulsed_decay``).
+    Can be estimated as :math:`n_{\text{target}}dV/N_{ppc}`, where :math:`n_{\text{target}}` is the target density of the product species, :math:`dV` is the cell volume, and :math:`N_{ppc}` is the target number of particle per cell for each product species.
+
+.. pp:param:: <collision_name>.productA_temperature_eV
+    :type: `float array, size 3`
+
+    Direction-dependent temperature used to assign a random thermal velocity to product species A (only for ``pulsed_decay``).
+    Example: ``<collision_name>.productA_temperature_eV = 0.1 0.2 0.3``.
+
+.. pp:param:: <collision_name>.productB_temperature_eV
+    :type: `float array, size 3`
+
+    Direction-dependent temperature used to assign a random thermal velocity to product species B (only for ``pulsed_decay``).
+    Example: ``<collision_name>.productB_temperature_eV = 0.1 0.2 0.3``.
 
 .. pp:param:: <collision_name>.Z
     :type: ``integer``
@@ -3071,35 +3365,49 @@ Details about the collision models can be found in the :ref:`theory section <mul
     :default: 0
     :optional:
 
-    For pairwisecoulomb collisions, whether to correct the energy and momentum after the collisions so that they are conserved.
+    Only for ``pairwisecoulomb`` collisions, whether to correct the energy and momentum after the collisions so that they are conserved.
+    This can be set for each collision using :pp:param:`<collision_name>.correct_energy_momentum`.
     In binary collisions, if the weights of the colliding particles are not the same, the collision does not
     exactly conserve energy and momentum. When this option is on, after the collisions, small modifications are made to the
     particle momentum so that the energy and momentum are exactly conserved in each cell.
     This uses the algorithm described in https://doi.org/10.1016/j.jcp.2025.113927.
+
+.. pp:param:: collisions.np_warning_threshold
+    :type: ``int``
+    :default: 20.
+    :optional:
+
+    Only for ``pairwisecoulomb`` collisions, with :pp:param:`collisions.correct_energy_momentum` set, this parameter controls the minimum number of particles per cell for producing warning messages when the moment-correction method fails.
 
 .. pp:param:: collisions.energy_fraction
     :type: ``float``
     :default: 0.05
     :optional:
 
-    For pairwisecoulomb collisions, when correcting the energy and momentum conservation, the energy correction is applied to pairs of particles in their center of momentum frame.
-    This parameter is the fraction of the relative energy in the COM frame that is used in the correction.
-
-.. pp:param:: collisions.energy_fraction_max
-    :type: ``float``
-    :default: 0.5
-    :optional:
-
-    For pairwisecoulomb collisions, when correcting the energy and momentum conservation, the energy correction is applied to pairs of particles in their center of momentum frame.
-    This parameter is the fraction of the total relative energy in the COM frame of all pairs that is used in the correction.
+    Only for ``pairwisecoulomb`` collisions with :pp:param:`collisions.correct_energy_momentum` set, and for ``inverse_bremsstrahlung``.
+    In both cases, the energy difference is applied to pairs of particles in their center of momentum frame in such a way that the momentum is conserved.
+    This parameter limits the change in the energy of the electrons to the specified fraction of the energy in the COM frame of the pair of particles.
+    With ``pairwisecoulomb`` collisions, energy can be added or removed, and if residual energy error remains after 10 passes over all particle pairs in a cell, the correction is deemed to have failed and particle velocities in the cell are restored to their pre-collision values.
+    With ``inverse_bremsstrahlung``, energy is always added, and it there if residual energy remaining after 10 passes, that remaining energy is distributed evenly among the particles without conservation of momentum.
+    This can be set for each collision using :pp:param:`<collision_name>.energy_fraction`.
 
 .. pp:param:: collisions.beta_weight_exponent
     :type: ``float``
     :default: 1.
     :optional:
 
-    For pairwisecoulomb collisions, when correcting the energy and momentum conservation, this parameter controls the exponent used on the particle weight when distributing the momentum correction.
+    Only for ``pairwisecoulomb`` collisions, with :pp:param:`collisions.correct_energy_momentum` set, this parameter controls the exponent used on the particle weight when distributing the momentum correction.
+    This can be set for each collision using :pp:param:`<collision_name>.beta_weight_exponent`.
     With a value greater than 1, it will distribute more of the correction to particles with higher weights.
+
+.. pp:param:: collisions.energy_correction_sort_by_weight
+    :type: ``bool``
+    :default: 0
+    :optional:
+
+    Only for ``pairwisecoulomb`` collisions, with :pp:param:`collisions.correct_energy_momentum` set, specifies whether the particles are sorted by weight when the energy correction is applied.
+    This can be set for each collision using :pp:param:`<collision_name>.energy_correction_sort_by_weight`.
+    When the particles have a range of weights, sorting improves the correction by applying more of it to the heavier weighted particles, which has a proportionately smaller effect on their momenta, and typically reduces the number of particles that the correction is applied to.
 
 .. pp:param:: collisions.split_momentum_push
     :type: ``bool``
@@ -3111,29 +3419,21 @@ Details about the collision models can be found in the :ref:`theory section <mul
     This is only implemented for the explicit evolve scheme and is not available for the implicit evolve schemes, because the implicit
     formulation is intrinsically energy-conserving when combined with MCC collisions, as shown in `Angus et al., J. Comput. Phys. 456, 2022 <https://doi.org/10.1016/j.jcp.2022.111030>`__.
 
-.. pp:param:: <collision_name>.correct_energy_momentum
+.. pp:param:: collisions.shuffling_method
     :type: ``bool``
+    :default: 0
     :optional:
 
-    For pairwisecoulomb collisions, override the parameter :pp:param:`collisions.correct_energy_momentum` for the specific collision.
+    Specify the shuffling method used for pairwise collisions (which includes ``pairwisecoulomb``, ``nuclearfusion``, ``bremsstrahlung``, ``linear_breit_wheeler``, ``dsmc``, and ``linear_compton``).
+    This can also be set for individual collisions using there collision name as the prefix, .. pp:param:: <collision_name>.shuffling_method.
+    The particles are shuffled within each cell to obtain good statistical properties, so that each particle can collide with each other particle in the cell with equal probability.
+    Several shuffling methods are implemented with have different properties.
 
-.. pp:param:: <collision_name>.energy_fraction
-    :type: ``float``
-    :optional:
+    - ``FisherYates`` The default, is the best method numerically with the best randomness characteristics, and should be free of correlation effects. Every particle within a cell is swapped with another random particle within the cell. Note that the shuffle can be slow and take a significant amount of simulation time with large numbers of particles per cell.
 
-    For pairwisecoulomb collisions, override the parameter :pp:param:`collisions.energy_fraction` for the specific collision.
+    - ``Modulus`` The particles are shuffled algorithmically, using a linear congruential generator where the particle ``i`` is replace by the particle ``(i*step + offset) % n``, where ``n`` is the number of particles, ``step`` is chosen randomly and is coprime with ``n``, and ``offset`` is chosen randomly. To increase randomness, multiple shuffles are done, with the particles in each cell divided randomly into up to five subgroups. The number of shuffles can be specified by the input paralel ``<collision_name>.modulus_rounds``, which defaults to 5. This method would be reasonable when there is some turnover of paticles in the cells. The advantage is that this shuffle is substantially faster (by orders of magnitude on GPU) than the Fisher-Yates and standard methods. In all of the tests performed, including ``pairwisecoulomb`` and ``nuclearfusion``, the collision rates were properly produced with this method. However, use carefully and check the results closely.
 
-.. pp:param:: <collision_name>.energy_fraction_max
-    :type: ``float``
-    :optional:
-
-    For pairwisecoulomb collisions, override the parameter :pp:param:`collisions.energy_fraction_max` for the specific collision.
-
-.. pp:param:: <collision_name>.beta_weight_exponent
-    :type: ``float``
-    :optional:
-
-    For pairwisecoulomb collisions, override the parameter :pp:param:`collisions.beta_weight_exponent` for the specific collision.
+    - ``None`` No shuffling is done. This option is here primarily for testing purposes and should not be used in production simulatins. However, this would be reasonable in cases where there is a large flux of particles across the cells, particularly in 2D and 3D, so that the turnover of particles in the cells is significant in the time that it would be expected that a particle would interact with all of the other particles in the cell. Use carefully and check the results closely.
 
 .. _running-cpp-parameters-numerics:
 
@@ -3153,9 +3453,11 @@ Time step
     The ratio between the actual timestep that is used in the simulation
     and the Courant-Friedrichs-Lewy (CFL) limit. (e.g. for ``warpx.cfl=1``,
     the timestep will be exactly equal to the CFL limit.)
-    For some speed v and grid spacing dx, this limits the timestep to ``warpx.cfl * dx / v``.
-    When used with the electromagnetic solver, ``v`` is the speed of light.
-    For the electrostatic solver, ``v`` is the maximum speed among all particles in the domain.
+    For some speed ``v`` and grid spacing ``dx``, this limits the timestep to ``warpx.cfl * dx / v``.
+    When used with electromagnetic solvers that treat light waves explicitly, ``v`` is the speed of light.
+    For the electrostatic solver and electromagnetic solvers that treat light waves implicitly, ``dx / v``
+    is the minimum direction-dependent value ``dx_i / v_i`` among all particles in the domain, where ``v_i`` is the
+    maximum speed in grid direction ``i`` and ``dx_i`` is the associated grid spacing.
 
 .. pp:param:: warpx.const_dt
     :type: ``float``
@@ -3167,17 +3469,47 @@ Time step
 
 .. pp:param:: warpx.dt_update_interval
     :type: ``string``
-    :default: ``-1``
     :optional:
 
-    How many iterations pass between timestep adaptations when using the electrostatic solver.
-    Must be greater than ``0`` to use adaptive timestepping, or else :pp:param:`warpx.const_dt` must be specified.
+    This controls adaptive timestepping, where the time step size is updated based on the conditions of the simulation, and only applies when using the explicit electrostatic or theta-implicit solvers.
+    This specifies time step intervals when the time step size is updated.
+    The value must be greater than ``0``.
+    When specified, :pp:param:`warpx.const_dt` must not also be specified.
+    The time step size is updated using the limits specified by :pp:param:`warpx.cfl`, :pp:param:`warpx.max_omegap_dt`, and :pp:param:`warpx.max_omegac_dt`.
+
+.. pp:param:: warpx.dt_update_diagnostic_file
+    :type: ``string``
+    :optional:
+
+    When adaptive timestepping is activated, information about the new time step and the simulation conditions are output to the file specified by this parameter.
+
+.. pp:param:: warpx.dt_update_write_interval
+    :type: ``string``
+    :optional:
+
+    When adaptive timestepping is activated and :pp:param:`warpx.dt_update_diagnostic_file` is specified, this specifies the interval when data is written to the diagnostic file.
+    The default is to write every time the time step is updated.
+
+.. pp:param:: warpx.max_omegap_dt
+    :type: ``float``
+    :optional:
+
+    With adaptive timestepping, the time step size is limited to be less than or equal to the value specified divided by the global plasma frequency.
+    The application of this limit is controlled by :pp:param:`warpx.dt_update_interval`, and is only applied when using the explicit electrostatic or theta-implicit solver..
+
+.. pp:param:: warpx.max_omegac_dt
+    :type: ``float``
+    :optional:
+
+    With adaptive timestepping, the time step size is limited to be less than or equal to the value specified divided by the maximum cyclotron frequency.
+    Note that the maximum B-field is calculated from using only the constant applied B field (as set by :pp:param:`particles.B_external_particle`) and the B-field grid data.
+    The application of this limit is controlled by :pp:param:`warpx.dt_update_interval`, and is only applied when using the explicit electrostatic or theta-implicit solver..
 
 .. pp:param:: warpx.max_dt
     :type: ``float``
     :optional:
 
-    The maximum timestep permitted for the electrostatic solver, when using adaptive timestepping.
+    The maximum timestep permitted when using adaptive timestepping.
     If supplied, also sets the initial timestep for these simulations, before the first timestep update.
 
 Filtering
@@ -3223,11 +3555,11 @@ Particle push, charge and current deposition, field gathering
     This parameter selects the algorithm for the deposition of the current density.
     Available options are: ``direct``, ``esirkepov``, ``villasenor``, and ``vay``. The default choice
     is ``esirkepov`` for FDTD maxwell solvers but ``direct`` for standard or
-    Galilean PSATD solver (i.e. with ``algo.maxwell_solver = psatd``) and
-    for the hybrid-PIC solver (i.e. with ``algo.maxwell_solver = hybrid``) and for
+    Galilean PSATD solver (i.e. with :pp:param:`algo.maxwell_solver = psatd`) and
+    for the hybrid-PIC solver (i.e. with :pp:param:`algo.maxwell_solver = hybrid`) and for
     diagnostics output with the electrostatic solvers (i.e., with
-    ``warpx.do_electrostatic = ...``).
-    Note that ``vay`` is only available for ``algo.maxwell_solver = psatd``.
+    :pp:param:`warpx.do_electrostatic = ...`).
+    Note that ``vay`` is only available for :pp:param:`algo.maxwell_solver = psatd`.
 
     1. ``direct``
 
@@ -3249,7 +3581,7 @@ Particle push, charge and current deposition, field gathering
 
        The current density is deposited as described in :cite:t:`param-VayJCP2013` (see section :ref:`current_deposition` for more details).
        This option guarantees charge conservation only when used in combination
-       with ``psatd.periodic_single_box_fft=1``, that is, only for periodic single-box
+       with :pp:param:`psatd.periodic_single_box_fft = 1`, that is, only for periodic single-box
        simulations with global FFTs without guard cells. The implementation for domain
        decomposition with local FFTs over guard cells is planned but not yet completed.
 
@@ -3274,7 +3606,7 @@ Particle push, charge and current deposition, field gathering
        the nodes, and then gather from the nodes.
 
 
-    Default: ``algo.field_gathering = energy-conserving`` with collocated or staggered grids (note that ``energy-conserving`` and ``momentum-conserving`` are equivalent with collocated grids), ``algo.field_gathering = momentum-conserving`` with hybrid grids.
+    Default: :pp:param:`algo.field_gathering = energy-conserving` with collocated or staggered grids (note that ``energy-conserving`` and ``momentum-conserving`` are equivalent with collocated grids), :pp:param:`algo.field_gathering = momentum-conserving` with hybrid grids.
 
 .. pp:param:: algo.particle_pusher
     :type: ``string``
@@ -3321,7 +3653,7 @@ Two families of Maxwell solvers are implemented in WarpX, based on the Finite-Di
      - ``ckc``: (not available in ``RZ``, ``RCYLINDER``, and ``RSPHERE`` geometries) Cole-Karkkainen solver with Cowan
        coefficients (see :cite:t:`param-CowanPRSTAB13`).
      - ``psatd``: Pseudo-spectral solver (see :ref:`theory <theory-mwsolve-psatd>`).
-     - ``ect``: Enlarged cell technique (conformal finite difference solver. See :cite:t:`param-XiaoIEEE2005`).
+     - ``ect``: Enlarged cell technique (conformal finite difference solver. See :cite:t:`param-XiaoIEEE2004`).
      - ``hybrid``: The E-field will be solved using Ohm's law and a kinetic-fluid hybrid model (see :ref:`theory <theory-kinetic-fluid-hybrid-model>`).
      - ``none``: No field solve will be performed.
 
@@ -3380,7 +3712,7 @@ Maxwell solver: PSATD method
     :default: ``1``, with the exceptions mentioned below
 
     If true, a current correction scheme in Fourier space is applied in order to guarantee charge conservation.
-    The default value is ``psatd.current_correction=1``, unless a charge-conserving current deposition scheme is used (by setting ``algo.current_deposition=esirkepov`` or ``algo.current_deposition=vay``) or unless the ``div(E)`` cleaning scheme is used (by setting ``warpx.do_dive_cleaning=1``).
+    The default value is :pp:param:`psatd.current_correction = 1`, unless a charge-conserving current deposition scheme is used (by setting :pp:param:`algo.current_deposition = esirkepov` or :pp:param:`algo.current_deposition = vay`) or unless the ``div(E)`` cleaning scheme is used (by setting :pp:param:`warpx.do_dive_cleaning = 1`).
 
     If :pp:param:`psatd.v_galilean` is zero, the spectral solver used is the standard PSATD scheme described in :cite:t:`param-VayJCP2013` and the current correction reads
 
@@ -3405,11 +3737,11 @@ Maxwell solver: PSATD method
 
     If true, the update equation for the electric field is expressed in terms of both the current density and the charge density, namely :math:`\widehat{\boldsymbol{J}}^{\,n+1/2}`, :math:`\widehat\rho^{n}`, and :math:`\widehat\rho^{n+1}`.
     If false, instead, the update equation for the electric field is expressed in terms of the current density :math:`\widehat{\boldsymbol{J}}^{\,n+1/2}` only.
-    If charge is expected to be conserved (by setting, for example, ``psatd.current_correction=1``), then the two formulations are expected to be equivalent.
+    If charge is expected to be conserved (by setting, for example, :pp:param:`psatd.current_correction = 1`), then the two formulations are expected to be equivalent.
 
     If :pp:param:`psatd.v_galilean` is zero, the spectral solver used is the standard PSATD scheme described in :cite:t:`param-VayJCP2013`:
 
-    1. if ``psatd.update_with_rho=0``, the update equation for the electric field reads
+    1. if :pp:param:`psatd.update_with_rho = 0`, the update equation for the electric field reads
 
     .. math::
        \begin{split}
@@ -3421,7 +3753,7 @@ Maxwell solver: PSATD method
        (\boldsymbol{k}\cdot\widehat{\boldsymbol{J}}^{\,n+1/2}) \boldsymbol{k}
        \end{split}
 
-    2. if ``psatd.update_with_rho=1``, the update equation for the electric field reads
+    2. if :pp:param:`psatd.update_with_rho = 1`, the update equation for the electric field reads
 
     .. math::
        \begin{split}
@@ -3437,7 +3769,7 @@ Maxwell solver: PSATD method
 
     If :pp:param:`psatd.v_galilean` is non-zero, the spectral solver used is the Galilean PSATD scheme described in :cite:t:`param-LehePRE2016`:
 
-    1. if ``psatd.update_with_rho=0``, the update equation for the electric field reads
+    1. if :pp:param:`psatd.update_with_rho = 0`, the update equation for the electric field reads
 
     .. math::
        \begin{split}
@@ -3452,7 +3784,7 @@ Maxwell solver: PSATD method
        (\boldsymbol{k}\cdot\widehat{\boldsymbol{J}}^{\,n+1/2}) \boldsymbol{k}
        \end{split}
 
-    2. if ``psatd.update_with_rho=1``, the update equation for the electric field reads
+    2. if :pp:param:`psatd.update_with_rho = 1`, the update equation for the electric field reads
 
     .. math::
        \begin{split}
@@ -3468,8 +3800,8 @@ Maxwell solver: PSATD method
     The coefficients :math:`C`, :math:`S`, :math:`\theta`, :math:`\nu`, :math:`\chi_1`, :math:`\chi_2`, and :math:`\chi_3` are defined in :cite:t:`param-LehePRE2016`.
 
     The default value for :pp:param:`psatd.update_with_rho` is ``1`` if :pp:param:`psatd.v_galilean` is non-zero and ``0`` otherwise.
-    The option ``psatd.update_with_rho=0`` is not implemented with the following algorithms:
-    comoving PSATD (:pp:param:`psatd.v_comoving`), time averaging (``psatd.do_time_averaging=1``), div(E) cleaning (``warpx.do_dive_cleaning=1``), and PSATD JRhom (:pp:param:`psatd.JRhom`).
+    The option :pp:param:`psatd.update_with_rho = 0` is not implemented with the following algorithms:
+    comoving PSATD (:pp:param:`psatd.v_comoving`), time averaging (:pp:param:`psatd.do_time_averaging = 1`), div(E) cleaning (:pp:param:`warpx.do_dive_cleaning = 1`), and PSATD JRhom (:pp:param:`psatd.JRhom`).
 
     Note that the update with and without rho is also supported in RZ geometry.
 
@@ -3481,7 +3813,7 @@ Maxwell solver: PSATD method
     Defines the Galilean velocity.
     A non-zero velocity activates the Galilean algorithm, which suppresses numerical Cherenkov instabilities (NCI) in boosted-frame simulations (see the section :ref:`Numerical Stability and alternate formulation in a Galilean frame <theory-boostedframe-galilean>` for more information).
     This requires the code to be compiled with the spectral solver.
-    It also requires the use of the direct current deposition algorithm (by setting ``algo.current_deposition = direct``).
+    It also requires the use of the direct current deposition algorithm (by setting :pp:param:`algo.current_deposition = direct`).
 
 .. pp:param:: psatd.use_default_v_galilean
     :type: ``0`` or ``1``
@@ -3496,7 +3828,7 @@ Maxwell solver: PSATD method
     :default: ``0. 0. 0.``
 
     Defines the comoving velocity in the comoving PSATD scheme.
-    A non-zero comoving velocity selects the comoving PSATD algorithm, which suppresses the numerical Cherenkov instability (NCI) in boosted-frame simulations, under certain assumptions. This option requires that WarpX is compiled with ``USE_FFT = TRUE``. It also requires the use of direct current deposition (``algo.current_deposition = direct``) and has neither been implemented nor tested with other current deposition schemes.
+    A non-zero comoving velocity selects the comoving PSATD algorithm, which suppresses the numerical Cherenkov instability (NCI) in boosted-frame simulations, under certain assumptions. This option requires that WarpX is compiled with ``USE_FFT = TRUE``. It also requires the use of direct current deposition (:pp:param:`algo.current_deposition = direct`) and has neither been implemented nor tested with other current deposition schemes.
 
 .. pp:param:: psatd.do_time_averaging
     :type: ``0`` or ``1``
@@ -3508,7 +3840,7 @@ Maxwell solver: PSATD method
     :type: ``string``
 
     This determines whether the PSATD JRhom algorithm is used, where current deposition and field update are performed multiple times within one time step, while field gathering is performed only once.
-    For simulations with strong numerical Cherenkov instability (NCI), the PSATD JRhom algorithm is recommended in combination with ``psatd.do_time_averaging = 1``.
+    For simulations with strong numerical Cherenkov instability (NCI), the PSATD JRhom algorithm is recommended in combination with :pp:param:`psatd.do_time_averaging = 1`.
     The input parameter is a string composed by two characters and one digit.
     The first character represents the time dependency of J within the time step over which the electromagnetic fields are evolved, e.g., "C" for constant in time, "L" for linear in time, "Q" for quadratic in time.
     The second character represents the time dependency of rho within the time step over which the electromagnetic fields are evolved, following the same naming convention as for J.
@@ -3541,7 +3873,7 @@ Maxwell solver: macroscopic media
     To initialize spatially varying conductivity, permittivity, and permeability, respectively,
     using a mathematical function in the input. Constants required in the
     mathematical expression can be set using ``my_constants``. These parameters are parsed
-    if ``algo.em_solver_medium=macroscopic``.
+    if :pp:param:`algo.em_solver_medium = macroscopic`.
 
 .. pp:param:: macroscopic.sigma/epsilon/mu
     :link_aliases:
@@ -3564,12 +3896,12 @@ Maxwell solver: kinetic-fluid hybrid
     **Required Parameters:**
 
     - :pp:param:`hybrid_pic_model.elec_temp` must be specified when using the hybrid solver.
-    - :pp:param:`hybrid_pic_model.n0_ref` should be specified if ``hybrid_pic_model.gamma != 1``.
+    - :pp:param:`hybrid_pic_model.n0_ref` should be specified if :pp:param:`hybrid_pic_model.gamma != 1`.
 
     **Best Practices**
 
-    - *Grid type:* Setting ``warpx.grid_type = collocated`` is recommended
-    - *Particle shape:* Linear particles (``algo.particle_shape = 1``) are recommended based on :cite:t:`param-Stanier2020`.
+    - *Grid type:* Setting :pp:param:`warpx.grid_type = collocated` is recommended
+    - *Particle shape:* Linear particles (:pp:param:`algo.particle_shape = 1`) are recommended based on :cite:t:`param-Stanier2020`.
 
 .. warning::
 
@@ -3577,7 +3909,7 @@ Maxwell solver: kinetic-fluid hybrid
 
     - *Mesh refinement:* Only one level is supported (no AMR). The solver will abort if ``lev > 0``.
     - *RZ geometry:* Only the m=0 azimuthal mode is supported in RZ geometry.
-    - *External vector potential:* If using ``hybrid_pic_model.add_external_fields = true``, then :pp:param:`external_vector_potential.fields` must be non-empty.
+    - *External vector potential:* If using :pp:param:`hybrid_pic_model.add_external_fields = true`, then :pp:param:`external_vector_potential.fields` must be non-empty.
     - *Time-dependent A fields:* When using expressions for external vector potentials, time variation must be specified via ``A_time_external_function(t)``, not directly in the ``A[x,y,z]_external_grid_function(x,y,z)`` expressions.
 
 .. pp:param:: hybrid_pic_model.elec_temp
@@ -3600,7 +3932,7 @@ Maxwell solver: kinetic-fluid hybrid
     If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this sets the exponent used to calculate
     the electron pressure (see :ref:`here <theory-hybrid-model-elec-temp>`).
 
-.. pp:param:: hybrid_pic_model.plasma_resistivity(rho,J)
+.. pp:param:: hybrid_pic_model.plasma_resistivity(rho,J,t)
     :type: ``float`` or ``str``
     :default: ``0``
     :optional:
@@ -3613,6 +3945,75 @@ Maxwell solver: kinetic-fluid hybrid
     :optional:
 
     If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this sets the plasma hyper-resistivity in :math:`\Omega m^3`.
+
+.. pp:param:: hybrid_pic_model.plasma_resistivity_<species>(rho_s,rho,Te,J,J_s,B,t)
+    :type: ``float`` or ``str``
+    :default: ``0``
+    :optional:
+
+    If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this adds a per-species resistivity overlay in :math:`\Omega m`
+    for the named charged species, on top of :pp:param:`hybrid_pic_model.plasma_resistivity(rho,J,t)`
+    (see the :ref:`theory section <theory-kinetic-fluid-hybrid-model>`). The expression can depend on the species
+    charge density ``rho_s`` and total charge density ``rho`` (:math:`C/m^3`), the electron temperature ``Te`` (:math:`K`),
+    the current-density magnitudes ``J`` and ``J_s`` (:math:`A/m^2`), the magnetic-field magnitude ``B`` (:math:`T`)
+    and the time ``t`` (:math:`s`). The same effective per-species resistivity enters the Joule-heating source of the
+    electron energy equation when :pp:param:`hybrid_pic_model.include_joule_heating` is on.
+    Species without their own overlay simply use the global
+    :pp:param:`hybrid_pic_model.plasma_resistivity(rho,J,t)`, so existing single-resistivity input decks are unchanged.
+    The species-resolved friction back-reaction on the ions is applied by the ``hybrid_resistive_drag``
+    collision (see :pp:param:`\<collision_name\>.type`), which should accompany any per-species overlay.
+    In all geometries, ``rho_s`` and ``J_s`` are expressed in physical SI units.
+    Within the subcycled B-field integration the overlay is applied as a lagged resistivity coefficient
+    multiplying the instantaneous plasma current (plus a frozen ion-drift part), so it damps the
+    substepped field dynamics the same way the global resistivity does; the parser itself is
+    evaluated once per half-step.
+
+.. pp:param:: hybrid_pic_model.solve_electron_energy_equation
+    :type: ``bool``
+    :default: ``false``
+    :optional:
+
+    If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this evolves the electron temperature used for the
+    electron pressure with the electron energy equation, solved with the QDSMC scheme
+    (see the :ref:`theory section <theory-hybrid-model-electron-energy-eq>`), instead of evaluating the polytropic
+    closure with the constant reference state :math:`(n_0, T_{e0})`.
+
+.. pp:param:: hybrid_pic_model.include_joule_heating
+    :type: ``bool``
+    :default: ``false``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.solve_electron_energy_equation` is on, this adds the Joule-heating source
+    consistent with the resistive friction in Ohm's law, applied per ion species with the effective resistivity
+    :math:`\eta_{s,\mathrm{eff}} = \eta + \eta_s`. For a single species this reduces to
+    :math:`dT_e/dt = (\gamma - 1)\,\eta J^2/(n_e k_B)`.
+
+.. pp:param:: hybrid_pic_model.joule_redirect_Te_threshold
+    :type: ``float``
+    :default: ``-1`` (off)
+    :optional:
+
+    Electron temperature threshold, in eV, above which the Joule heat is redirected to the ions.
+    If :pp:param:`hybrid_pic_model.include_joule_heating` is on and a threshold :math:`\geq 0` is specified,
+    cells with electron temperature at or above the threshold deposit their Joule heat to the kinetic ions
+    (as stochastic thermal-velocity kicks, bookkept per species) instead of the electron fluid. This caps the
+    electron heating at the threshold and allows :math:`T_i > T_e` to develop, mimicking regimes where the
+    electrons radiate strongly.
+
+.. pp:param:: hybrid_pic_model.electron_ion_relaxation_rate(rho,Te,Ti,t)
+    :type: ``float`` or ``str``
+    :optional:
+
+    The electron-ion relaxation rate :math:`\nu_{ei}`, in :math:`s^{-1}`. If
+    :pp:param:`hybrid_pic_model.solve_electron_energy_equation` is on, specifying this rate enables the
+    electron-ion thermal-equilibration exchange :math:`Q_{ei} = \sum_s 3 n_s k_B \nu_{ei} (T_e - T_{i,s})`
+    as a sink on the electron fluid, paired with matching heating of the ion macro-particles about
+    each species' bulk velocity. This exchanges thermal energy without changing the ion bulk momentum.
+    The required shape-aware ion temperature deposition
+    (``<species>.do_temperature_deposition``) is enabled automatically on every charged species.
+    The expression can depend on the total charge density ``rho`` (:math:`C/m^3`), the electron and ion
+    temperatures ``Te`` and ``Ti`` (both in eV) and the time ``t`` (:math:`s`), which permits, e.g., the
+    NRL-formulary Spitzer rate.
 
 .. pp:param:: hybrid_pic_model.J[x/y/z]_external_grid_function(x,y,z,t)
     :type: ``float`` or ``str``
@@ -3633,7 +4034,75 @@ Maxwell solver: kinetic-fluid hybrid
     :default: ``10``
     :optional:
 
-    If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this sets the number of sub-steps to take during the B-field update.
+    If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this sets the total number of sub-steps used to advance
+    the B-field over one full timestep (split evenly between the two half-steps, so ``substeps/2`` RK4 steps are taken
+    per half-step, each of duration :math:`\Delta t / \text{substeps}`). Must be divisible by 2; if not, the value is
+    automatically rounded up to the next even number. When :pp:param:`hybrid_pic_model.use_rkf45` is active, this is
+    instead used only as the initial substep count estimate for the adaptive solver.
+    After each timestep on which :pp:param:`hybrid_pic_model.use_rkf45` is active, this value is updated based on
+    ``n_attempts``, the total number of RKF45 sub-step attempts (accepted and rejected) taken in the most recent
+    half-step: if the current value is less than ``2 * n_attempts``, it jumps immediately to ``2 * n_attempts``;
+    otherwise it decays slowly toward that target via exponential smoothing (95% of the current value,
+    5% of ``2 * n_attempts``). This warm-start guess also carries over to RK4 steps on timesteps where
+    :pp:param:`hybrid_pic_model.use_rkf45` is not active.
+
+.. pp:param:: hybrid_pic_model.use_rkf45
+    :type: ``string`` or ``bool``
+    :default: ``false``
+    :optional:
+
+    If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this selects the B-field sub-step integrator.
+    When ``false`` (default), a fixed-step classical RK4 method is used with exactly
+    :pp:param:`hybrid_pic_model.substeps` total sub-steps per timestep.
+    When ``true``, the adaptive Runge-Kutta-Fehlberg 4(5) (RKF45) method :cite:t:`param-Fehlberg1969`
+    is used, controlling the local truncation error to stay within
+    :pp:param:`hybrid_pic_model.substep_rtol` and :pp:param:`hybrid_pic_model.substep_atol`.
+
+    This parameter also accepts the `Time intervals`_ syntax to enable the RKF45 integrator only
+    on specific timesteps, e.g. ``hybrid_pic_model.use_rkf45 = 1::5``, which enables RKF45
+    every 5 steps from step 1.
+    When ``false`` or ``0``, the RKF45 integrator is never used.
+    When ``true``, ``1``, or ``::`` the RKF45 integrator is used at every timestep.
+
+.. pp:param:: hybrid_pic_model.substep_rtol
+    :type: ``float``
+    :default: ``1e-4``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.use_rkf45` is active, this sets the relative tolerance for the RKF45
+    adaptive step-size control.
+
+.. pp:param:: hybrid_pic_model.substep_atol
+    :type: ``float``
+    :default: ``1e-8``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.use_rkf45` is active, this sets the absolute tolerance for the RKF45
+    adaptive step-size control.
+
+.. pp:param:: hybrid_pic_model.substep_safety
+    :type: ``float``
+    :default: ``0.9``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.use_rkf45` is active, this sets the safety factor applied to the
+    step-size adjustment formula.
+
+.. pp:param:: hybrid_pic_model.substep_max_growth
+    :type: ``float``
+    :default: ``5.0``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.use_rkf45` is active, this sets the maximum factor by which the
+    substep size may grow after an accepted step.
+
+.. pp:param:: hybrid_pic_model.max_substep_attempts
+    :type: ``int``
+    :default: ``250``
+    :optional:
+
+    If :pp:param:`hybrid_pic_model.use_rkf45` is active, this sets the maximum number of substep attempts
+    (accepted and rejected combined) per half-step before the simulation aborts.
 
 .. pp:param:: hybrid_pic_model.holmstrom_vacuum_region
     :type: ``bool``
@@ -3641,6 +4110,22 @@ Maxwell solver: kinetic-fluid hybrid
     :optional:
 
     If :pp:param:`algo.maxwell_solver` is set to ``hybrid``, this sets the vacuum region handling of the generalized Ohm's Law to suppress vacuum fluctuations. :cite:t:`param-holmstrom2013handlingvacuumregionshybrid`.
+
+.. pp:param:: hybrid_pic_model.vacuum_seam_switch_mode
+    :type: ``edge``, ``node`` or ``cell``
+    :default: ``edge``
+
+    Sampling of the density that decides the vacuum-seam treatment of the
+    generalized Ohm's law: the vacuum branch of
+    :pp:param:`hybrid_pic_model.holmstrom_vacuum_region` when that treatment
+    is on, and the selection of the density floor in the guarded Hall term
+    otherwise. The default per-component edge average lets the three E
+    components of a cell take inconsistent vacuum/plasma decisions along a
+    moving plasma/vacuum seam, a grid-patterned spurious-E source there.
+    ``node`` uses the endpoint minimum; ``cell`` uses the minimum over the
+    adjacent cells of the node-averaged density -- a single
+    piecewise-constant-per-cell decision for all three components. Both are
+    vacuum-favoring. Only supported in 3D and 2D (XZ) Cartesian geometry.
 
 .. pp:param:: hybrid_pic_model.add_external_fields
     :type: ``bool``
@@ -3702,20 +4187,20 @@ Grid types (collocated, staggered, hybrid)
     a staggered grid (fields defined on a Yee grid), or a hybrid grid (fields
     and currents are interpolated back and forth between a staggered grid and a
     nodal grid, must be used with momentum-conserving field gathering algorithm,
-    ``algo.field_gathering = momentum-conserving``).
+    :pp:param:`algo.field_gathering = momentum-conserving`).
     The option ``hybrid`` is currently not supported in RZ, RCYLINDER, and RSPHERE geometries.
 
-    Default: ``warpx.grid_type = staggered``.
+    Default: :pp:param:`warpx.grid_type = staggered`.
 
 .. pp:param:: interpolation.galerkin_scheme
     :type: ``0`` or ``1``
 
     Whether to use a Galerkin scheme when gathering fields to particles.
     When set to ``1``, the interpolation orders used for field-gathering are reduced for certain field components along certain directions.
-    For example, :math:`E_z` is gathered using :pp:param:`algo.particle_shape` along :math:`(x,y)` and ``algo.particle_shape - 1`` along :math:`z`.
+    For example, :math:`E_z` is gathered using :pp:param:`algo.particle_shape` along :math:`(x,y)` and :pp:param:`algo.particle_shape - 1` along :math:`z`.
     See equations (21)-(23) of :cite:t:`param-Godfrey2013` and associated references for details.
 
-    Default: ``interpolation.galerkin_scheme = 0`` with collocated grids, or momentum-conserving field gathering, or when ``algo.current_deposition = direct`` ; ``interpolation.galerkin_scheme = 1`` otherwise.
+    Default: :pp:param:`interpolation.galerkin_scheme = 0` with collocated grids, or momentum-conserving field gathering, or when :pp:param:`algo.current_deposition = direct` ; :pp:param:`interpolation.galerkin_scheme = 1` otherwise.
 
     .. warning::
 
@@ -3730,7 +4215,7 @@ Grid types (collocated, staggered, hybrid)
     :type: ``integer``
     :optional:
 
-    The order of interpolation used with staggered or hybrid grids (``warpx.grid_type = staggered`` or ``warpx.grid_type = hybrid``) and momentum-conserving field gathering (``algo.field_gathering = momentum-conserving``) to interpolate the electric and magnetic fields from the cell centers to the cell nodes, before gathering the fields from the cell nodes to the particle positions.
+    The order of interpolation used with staggered or hybrid grids (:pp:param:`warpx.grid_type = staggered` or :pp:param:`warpx.grid_type = hybrid`) and momentum-conserving field gathering (:pp:param:`algo.field_gathering = momentum-conserving`) to interpolate the electric and magnetic fields from the cell centers to the cell nodes, before gathering the fields from the cell nodes to the particle positions.
 
     Default: ``warpx.field_centering_no<x,y,z> = 2`` with staggered grids, ``warpx.field_centering_no<x,y,z> = 8`` with hybrid grids (typically necessary to ensure stability in boosted-frame simulations of relativistic plasmas and beams).
 
@@ -3743,16 +4228,16 @@ Grid types (collocated, staggered, hybrid)
     :type: ``integer``
     :optional:
 
-    The order of interpolation used with hybrid grids (``warpx.grid_type = hybrid``) to interpolate the currents from the cell nodes to the cell centers when ``warpx.do_current_centering = 1``, before pushing the Maxwell fields on staggered grids.
+    The order of interpolation used with hybrid grids (:pp:param:`warpx.grid_type = hybrid`) to interpolate the currents from the cell nodes to the cell centers when :pp:param:`warpx.do_current_centering = 1`, before pushing the Maxwell fields on staggered grids.
 
-    Default: ``warpx.current_centering_no<x,y,z> = 8`` with hybrid grids (typically necessary to ensure stability in boosted-frame simulations of relativistic plasmas and beams).
+    Default: :pp:param:`warpx.current_centering_no<x,y,z> = 8` with hybrid grids (typically necessary to ensure stability in boosted-frame simulations of relativistic plasmas and beams).
 
 .. pp:param:: warpx.do_current_centering
     :type: ``bool``, ``0`` or ``1``
 
     If true, the current is deposited on a nodal grid and then centered to a staggered grid (Yee grid), using finite-order interpolation.
 
-    Default: ``warpx.do_current_centering = 0`` with collocated or staggered grids, ``warpx.do_current_centering = 1`` with hybrid grids.
+    Default: :pp:param:`warpx.do_current_centering = 0` with collocated or staggered grids, :pp:param:`warpx.do_current_centering = 1` with hybrid grids.
 
 Additional parameters
 ^^^^^^^^^^^^^^^^^^^^^
@@ -3772,8 +4257,15 @@ Additional parameters
     :type: ``0`` or ``1``
     :default: 0
 
-    Whether to use projection method to scrub A/B field divergence in externally
-    loaded fields. This is automatically turned on if external/initial B or time varying A fields are loaded.
+    Whether to use a projection method to scrub A/B field divergence in externally
+    loaded fields. This applies to both externally loaded grid fields
+    (``warpx.B_ext_grid_init_style``) and externally applied particle fields
+    (``particles.B_ext_particle_init_style = read_from_file``); when several applied
+    field maps are stacked, each map is cleaned independently. It is supported for the
+    electromagnetic (Yee, hybrid-PIC), electrostatic (labframe) and magnetostatic
+    (labframe-electromagnetostatic, with the multigrid Poisson solver) solvers.
+    This is automatically turned on if external/initial grid B or time varying A fields
+    are loaded; for applied particle fields it must be enabled explicitly (opt-in).
 
 .. pp:param:: warpx.projection_div_cleaner.rtol
     :type: ``float``
@@ -3803,8 +4295,19 @@ Additional parameters
     evolves with its own time step, set to its own CFL limit. In practice, it
     means that when level 0 performs one iteration, level 1 performs two
     iterations. Currently, this option is only supported when
-    ``amr.max_level = 1``. More information can be found at
-    https://ieeexplore.ieee.org/document/8659392.
+    :pp:param:`amr.max_level = 1` and when the refinement ratio
+    :pp:param:`amr.ref_ratio` is 2 in all directions. More information can be
+    found at https://ieeexplore.ieee.org/document/8659392.
+
+    Sub-cycling is only implemented for the finite-difference electromagnetic
+    solvers (``algo.maxwell_solver = yee``, ``ckc`` or ``ect``). It is not
+    supported with the electrostatic and magnetostatic solvers (see
+    :pp:param:`warpx.do_electrostatic`), with the hybrid-PIC solver
+    (``algo.maxwell_solver = hybrid``), nor with the spectral solver
+    (``algo.maxwell_solver = psatd``); WarpX aborts if sub-cycling is requested
+    with any of these solvers. It also requires the explicit evolve scheme
+    (:pp:param:`algo.evolve_scheme` = ``explicit``, the default), since the
+    implicit and semi-implicit schemes do not sub-cycle.
 
 .. pp:param:: warpx.override_sync_intervals
     :type: ``string``
@@ -3839,13 +4342,14 @@ Additional parameters
 
 .. pp:param:: warpx.sort_particles_for_deposition
     :type: ``bool``
-    :default: ``true`` for the CUDA backend, otherwise ``false``
+    :default: ``true`` for the CUDA and HIP backends, otherwise ``false``
     :optional:
 
     This option controls the type of sorting used if particle sorting is turned on, i.e. if ``sort_intervals`` is not ``<=0``.
     If ``true``, particles will be sorted by cell to optimize deposition with many particles per cell, in the order x -> y -> z -> ppc.
     If ``false``, particles will be sorted by bin, using the ``sort_bin_size`` parameter below, in the order ppc -> x -> y -> z.
-    ``true`` is recommend for best performance on NVIDIA GPUs, especially if there are many particles per cell.
+    ``true`` is recommended for best performance on NVIDIA and AMD GPUs, especially if
+    there are many particles per cell.
 
 .. pp:param:: warpx.sort_idx_type
     :type: list of ``int``
@@ -3976,7 +4480,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :optional:
 
     Name of each diagnostics.
-    example: ``diagnostics.diags_names = diag1 my_second_diag``.
+    example: :pp:param:`diagnostics.diags_names = diag1 my_second_diag`.
 
 .. pp:param:: <diag_name>.intervals
     :type: ``string``
@@ -4009,7 +4513,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
 
     * ``plotfile`` for native AMReX format.
 
-    * ``checkpoint`` for a checkpoint file, only works with ``<diag_name>.diag_type = Full``.
+    * ``checkpoint`` for a checkpoint file, only works with :pp:param:`<diag_name>.diag_type = Full`.
 
     * ``openpmd`` for OpenPMD format `openPMD <https://www.openPMD.org>`_.
       Requires to build WarpX with ``USE_OPENPMD=TRUE`` (see :ref:`instructions <building-openpmd>`).
@@ -4023,20 +4527,20 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
 .. pp:param:: <diag_name>.sensei_config
     :type: ``string``
 
-    Only read if ``<diag_name>.format = sensei``.
+    Only read if :pp:param:`<diag_name>.format = sensei`.
     Points to the SENSEI XML file which selects and configures the desired back end.
 
 .. pp:param:: <diag_name>.sensei_pin_mesh
     :type: ``integer``
     :default: 0
 
-    Only read if ``<diag_name>.format = sensei``.
+    Only read if :pp:param:`<diag_name>.format = sensei`.
     When 1 lower left corner of the mesh is pinned to 0.,0.,0.
 
 .. pp:param:: <diag_name>.openpmd_backend
     :type: ``bp5``, ``bp4``, ``h5`` or ``json``
     :optional:
-    :comment: only used if ``<diag_name>.format = openpmd``
+    :comment: only used if :pp:param:`<diag_name>.format = openpmd`
 
     `I/O backend <https://openpmd-api.readthedocs.io/en/latest/backends/overview.html>`_ for `openPMD <https://www.openPMD.org>`_ data dumps.
     ``bp5``/``bp4`` is the `ADIOS I/O library <https://csmd.ornl.gov/adios>`_, ``h5`` is the `HDF5 format <https://www.hdfgroup.org/solutions/hdf5/>`_, and ``json`` is a `simple text format <https://en.wikipedia.org/wiki/JSON>`_.
@@ -4046,7 +4550,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
 .. pp:param:: <diag_name>.openpmd_encoding
     :type: ``v`` (variable based), ``f`` (file based) or ``g`` (group based)
     :optional:
-    :comment: only read if ``<diag_name>.format = openpmd``.
+    :comment: only read if :pp:param:`<diag_name>.format = openpmd`.
 
     openPMD `file output encoding <https://openpmd-api.readthedocs.io/en/0.17.0/usage/concepts.html#iteration-and-series>`__.
     File based: one file per timestep (slower), group/variable based: one file for all steps (faster)).
@@ -4057,7 +4561,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :type: ``integer``
     :default: s to 5
     :optional:
-    :comment: only read if ``<diag_name>.diag_type = BackTransformed``
+    :comment: only read if :pp:param:`<diag_name>.diag_type = BackTransformed`
 
     This parameter is intended for ADIOS backend to group every N buffers (N is the value of this parameter) and then flush to disk.
 
@@ -4122,18 +4626,30 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :optional:
 
     Fields written to output.
-    Possible scalar fields: ``part_per_cell`` ``rho`` ``phi`` ``F`` ``part_per_grid`` ``proc_num`` ``divE`` ``divB`` ``eb_covered`` ``rho_<species_name>`` and ``T_<species_name>``, where ``<species_name>`` must match the name of one of the available particle species.
-    ``T_<species_name>`` is the temperature in eV.
+    Possible scalar fields: ``part_per_cell`` ``rho`` ``phi`` ``F`` ``part_per_grid`` ``proc_num`` ``divE`` ``divB`` ``eb_covered`` ``rho_<species_name>``, ``T_<species_name>``, and ``part_per_cell_<species_name>``, where ``<species_name>`` must match the name of one of the available particle species.
+    ``T_<species_name>`` is the temperature in eV (only valid for non-relativistic plasmas, since the code relies on the equipartition theorem to extract the temperature).
+    With the hybrid-PIC solver (:pp:param:`algo.maxwell_solver` = ``hybrid``), the scalar fields ``Te`` (electron temperature in K: implied by the electron-pressure closure, or the evolved state variable when :pp:param:`hybrid_pic_model.solve_electron_energy_equation` is on) and ``Pe`` (electron pressure in Pa, as used in the Ohm's-law E-field solve) are also available.
     ``eb_covered`` is a number between 0 and 1 that indicates the fraction of the cell that is covered by the embedded boundary.
     Note that ``phi`` will only be written out when ``do_electrostatic==labframe``.
-    Also, note that for ``<diag_name>.diag_type = BackTransformed``, the only scalar field currently supported is ``rho``.
+    Also, note that for :pp:param:`<diag_name>.diag_type = BackTransformed`, the only scalar field currently supported is ``rho``.
     Possible vector field components in Cartesian geometry: ``Ex`` ``Ey`` ``Ez`` ``Bx`` ``By`` ``Bz`` ``jx`` ``jy`` ``jz``.
     Possible vector field components in RZ and RCYLINDER geometry: ``Er`` ``Et`` ``Ez`` ``Br`` ``Bt`` ``Bz`` ``jr`` ``jt`` ``jz``.
     Possible vector field components in RSPHERE geometry: ``Er`` ``Et`` ``Ep`` ``Br`` ``Bt`` ``Bp`` ``jr`` ``jt`` ``jp``.
+    Any MultiFab added to the internal registry can also be included in the list.
     The default :pp:param:`<diag_name>.fields_to_plot` is to write all possible field components for the geometry.
     When the special value ``none`` is specified, no fields are written out.
     Note that the fields are averaged on the cell centers before they are written to file.
     Otherwise, we reconstruct a 2D Cartesian slice of the fields for output at :math:`\theta=0`.
+
+.. pp:param:: <diag_name>.additional_fields_to_plot
+    :type: list of ``strings``
+    :optional:
+
+    Additional fields written to output, in addition to the standard default list as specified with :pp:param:`<diag_name>.fields_to_plot`.
+    This allows specification of fields to plot without having to also list the default fields when they are also desired.
+    Any of the same fields can be listed here.
+    Any MultiFab added to the internal registry can also be included in the list.
+    If :pp:param:`<diag_name>.fields_to_plot` is set to ``none``, this input is ignored.
 
 .. pp:param:: <diag_name>.dump_rz_modes
     :type: ``0`` or ``1``
@@ -4150,7 +4666,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     Note that the deposition onto the grid does not respect the particle shape factor, but instead uses nearest-grid point interpolation.
     Default is none.
     Parser functions for these field names are specified by :pp:param:`<diag_name>.particle_fields.<field_name>(x,y,z,ux,uy,uz)`.
-    Also, note that this option is only available for ``<diag_name>.diag_type = Full``
+    Also, note that this option is only available for :pp:param:`<diag_name>.diag_type = Full`
 
 .. pp:param:: <diag_name>.particle_fields_species
     :type: list of ``strings``
@@ -4196,9 +4712,9 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :optional:
 
     By default, the fields written in the plot files are averaged on the cell centers.
-    When ``<diag_name>.plot_raw_fields = 1``, then the raw (i.e. non-averaged)
+    When :pp:param:`<diag_name>.plot_raw_fields = 1`, then the raw (i.e. non-averaged)
     fields are also saved in the output files.
-    Only works with ``<diag_name>.format = plotfile``.
+    Only works with :pp:param:`<diag_name>.format = plotfile`.
     See `this section <https://yt-project.org/doc/examining/loading_data.html#viewing-raw-fields-in-warpx>`__
     in the yt documentation for more details on how to view raw fields.
 
@@ -4207,9 +4723,9 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :default: ``0``
     :optional:
 
-    Only used when ``<diag_name>.plot_raw_fields = 1``.
+    Only used when :pp:param:`<diag_name>.plot_raw_fields = 1`.
     Whether to include the guard cells in the output of the raw fields.
-    Only works with ``<diag_name>.format = plotfile``.
+    Only works with :pp:param:`<diag_name>.format = plotfile`.
 
 .. pp:param:: <diag_name>.coarsening_ratio
     :type: list of ``int``
@@ -4275,7 +4791,7 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     Note that the fields gathered in the same way as during the simulation, and do not include any applied fields.
     Also, when writing to the OpenPMD format and when using the lab-frame electrostatic solver, ``phi`` (electrostatic potential, on the macroparticles) is also available.
     By default, positions, momenta, and weights are written out.
-    If ``<diag_name>.<species_name>.variables = none``, no particle data are written.
+    If :pp:param:`<diag_name>.<species_name>.variables = none`, no particle data are written.
 
 .. pp:param:: <diag_name>.<species_name>.additional_variables
     :type: list of `strings` separated by spaces
@@ -4291,14 +4807,14 @@ In-situ capabilities can be used by turning on Sensei or Ascent (provided they a
     :type: ``float``
     :optional:
 
-    If provided ``<diag_name>.<species_name>.random_fraction = a``, only ``a`` fraction of the particle data of this species will be dumped randomly in diag ``<diag_name>``, i.e. if ``rand() < a``, this particle will be dumped, where ``rand()`` denotes a random number generator.
+    If provided :pp:param:`<diag_name>.<species_name>.random_fraction = a`, only ``a`` fraction of the particle data of this species will be dumped randomly in diag ``<diag_name>``, i.e. if ``rand() < a``, this particle will be dumped, where ``rand()`` denotes a random number generator.
     The value ``a`` provided should be between 0 and 1.
 
 .. pp:param:: <diag_name>.<species_name>.uniform_stride
     :type: ``int``
     :optional:
 
-    If provided ``<diag_name>.<species_name>.uniform_stride = n``,
+    If provided :pp:param:`<diag_name>.<species_name>.uniform_stride = n`,
     every ``n`` particle of this species will be dumped, selected uniformly.
     The value provided should be an integer greater than or equal to 0.
 
@@ -4362,7 +4878,7 @@ Time-Averaged Diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 ``TimeAveraged`` diagnostics are a special type of ``Full`` diagnostics that allows for the output of time-averaged field data.
-This type of diagnostics can be created using ``<diag_name>.diag_type = TimeAveraged``.
+This type of diagnostics can be created using :pp:param:`<diag_name>.diag_type = TimeAveraged`.
 We support only field data and related options from the list at `Full Diagnostics`_.
 
 .. note::
@@ -4415,7 +4931,7 @@ In addition, ``TimeAveraged`` diagnostic options include:
 BackTransformed Diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-``BackTransformed`` diag type are used when running a simulation in a boosted frame, to reconstruct output data to the lab frame. For more details on back-transformed diagnostics (BTD), see :ref:`FAQ: What about Back-transformed diagnostics (BTD)? <faq_btd>`. This option can be set using ``<diag_name>.diag_type = BackTransformed``. We support the following list of options from `Full Diagnostics`_
+``BackTransformed`` diag type are used when running a simulation in a boosted frame, to reconstruct output data to the lab frame. For more details on back-transformed diagnostics (BTD), see :ref:`FAQ: What about Back-transformed diagnostics (BTD)? <faq_btd>`. This option can be set using :pp:param:`<diag_name>.diag_type = BackTransformed`. We support the following list of options from `Full Diagnostics`_
 
     :pp:param:`<diag_name>.format`, :pp:param:`<diag_name>.openpmd_backend`, :pp:param:`<diag_name>.dump_rz_modes`, :pp:param:`<diag_name>.file_prefix`, :pp:param:`<diag_name>.diag_lo`, :pp:param:`<diag_name>.diag_hi`, :pp:param:`<diag_name>.write_species`, :pp:param:`<diag_name>.species`.
 
@@ -4515,9 +5031,9 @@ This can be important if a large number of particles are lost, avoiding filling 
 In addition to their usual attributes, the saved particles have
    an integer attribute ``stepScraped``, which indicates the PIC iteration at which each particle was absorbed at the boundary,
    a real attribute ``deltaTimeScraped``, which indicates the time between the time associated to ``stepScraped``
-   and the exact time when each particle hits the boundary,
-   a real attribute ``timeScraped``, which indicates the exact time when the paritcle hit the boundary,
-   3 real attributes ``nx``, ``ny``, ``nz``, which represents the three components of the normal to the boundary on the point of contact of the particles (not saved if they reach non-EB boundaries)
+   and the exact time when each particle is absorbed at the boundary,
+   a real attribute ``timeScraped``, which indicates the exact time when the particle is absorbed at the boundary,
+   3 real attributes ``nx``, ``ny``, ``nz``, which represents the three components of the normal to the boundary at the point where the particle is absorbed (not saved if they reach non-EB boundaries)
 
 ``BoundaryScrapingDiagnostics`` can be used with :pp:param:`<diag_name>.<species_name>.random_fraction`, :pp:param:`<diag_name>.<species_name>.uniform_stride`, and ``<diag_name>.<species_name>.plot_filter_function``, which have the same behavior as for ``FullDiagnostics``. For ``BoundaryScrapingDiagnostics``, these filters are applied at the time the data is written to file. An implication of this is that more particles may initially be accumulated in memory than are ultimately written. ``t`` in ``plot_filter_function`` refers to the time the diagnostic is written rather than the time the particle crossed the boundary.
 
@@ -5045,6 +5561,7 @@ This shifts analysis from post-processing to runtime calculation of reduction op
 
         In practice, the above expression of the differential luminosity is evaluated over discrete bins in energy :math:`\mathcal{E}^*`,
         and by summing over macroparticles.
+        The text output contains step, time, the binned differential luminosity values, and a final total luminosity column accumulated over all particle pairs regardless of the binning range.
 
         * ``<reduced_diags_name>.species`` (``list of two strings``)
             The names of the two species for which the differential luminosity is computed.
@@ -5326,10 +5843,10 @@ Schwinger process
     :optional:
 
     If this is 1, Schwinger electron-positron pairs can be generated in vacuum in the cells where the EM field is high enough.
-    If ``warpx.do_qed_schwinger = 1``, Schwinger product species must be specified with
+    If :pp:param:`warpx.do_qed_schwinger = 1`, Schwinger product species must be specified with
     :pp:param:`qed_schwinger.ele_product_species` and :pp:param:`qed_schwinger.pos_product_species`.
-    Schwinger process requires either ``warpx.grid_type = collocated`` or
-    ``algo.field_gathering=momentum-conserving`` (so that different field components are computed
+    Schwinger process requires either :pp:param:`warpx.grid_type = collocated` or
+    :pp:param:`algo.field_gathering = momentum-conserving` (so that different field components are computed
     at the same location in the grid) and does not currently support mesh refinement, cylindrical
     coordinates or single precision.
 
@@ -5391,7 +5908,7 @@ Schwinger process
     Will use the Hybrid QED Maxwell solver when pushing fields: a QED correction is added to the
     field solver to solve non-linear Maxwell's equations, according to :cite:t:`param-GrismayerNJP2021`.
     Note that this option can only be used with the PSATD build. Furthermore, one must set
-    ``warpx.grid_type = collocated`` (which otherwise would be ``staggered`` by default).
+    :pp:param:`warpx.grid_type = collocated` (which otherwise would be ``staggered`` by default).
     This feature does not require to compile with ``-DWarpX_QED=ON``.
 
 .. pp:param:: warpx.quantum_xi
@@ -5407,7 +5924,7 @@ Schwinger process
 Checkpoints and restart
 -----------------------
 WarpX supports checkpoints/restart via AMReX.
-The checkpoint capability can be turned with regular diagnostics: ``<diag_name>.format = checkpoint``.
+The checkpoint capability can be turned with regular diagnostics: :pp:param:`<diag_name>.format = checkpoint`.
 
 .. pp:param:: amr.restart
     :type: ``string``
@@ -5443,6 +5960,7 @@ When developing, testing and :ref:`debugging WarpX <debugging_warpx>`, the follo
     If set to true, the information normally printed to the terminal at every time step
     is limited: it prints every step for the first 10 steps, every 10 steps for steps between 10 and 100,
     and once every 100 steps for steps greater than 100.
+    This also limits the output from the field solvers.
 
 .. pp:param:: warpx.always_warn_immediately
     :type: ``0`` or ``1``
@@ -5461,7 +5979,7 @@ When developing, testing and :ref:`debugging WarpX <debugging_warpx>`, the follo
     If the threshold is set, warning messages with priority greater than or
     equal to the threshold trigger an immediate abort.
     It is mainly intended for debug purposes, and is best used with
-    ``warpx.always_warn_immediately=1``.
+    :pp:param:`warpx.always_warn_immediately = 1`.
 
 .. pp:param:: amrex.abort_on_unused_inputs
     :type: ``0`` or ``1``
