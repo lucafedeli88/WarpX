@@ -17,12 +17,21 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 
 namespace ablastr::fields
 {
+    // Direction: implicit conversion from strings, e.g., in MultiFabRegister::get(name, "x", level)
+    static_assert(std::is_convertible_v<char const *, Direction>);
+    static_assert(std::is_convertible_v<std::string, Direction>);
+    static_assert(std::is_convertible_v<std::string_view, Direction>);
+    // Direction: a char must not promote silently to Direction (int), e.g., 'x' -> 120
+    static_assert(!std::is_constructible_v<Direction, char>);
+
     amrex::MultiFab*
     MultiFabRegister::internal_alloc_init (
         std::string const & name,

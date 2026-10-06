@@ -72,6 +72,15 @@ namespace ablastr::fields
     {
         int dir = 0;
 
+        /** std::string_view{nullptr} is undefined behavior (strlen), so throw instead */
+        static std::string_view checked_string_view (char const * c)
+        {
+            if (c == nullptr) {
+                throw std::runtime_error("invalid direction: nullptr");
+            }
+            return std::string_view{c};
+        }
+
     public:
         constexpr explicit Direction (int d) : dir(d) {}
 
@@ -148,8 +157,25 @@ namespace ablastr::fields
             }
         }
 
-        // rule of five: define default constructors and the destructor
-        //   because we defined a special one above for char
+        // e.g., std::string{"x"}
+        //   needed for implicit conversion: std::string -> std::string_view -> Direction would
+        //   be two user-defined conversions
+        Direction (std::string const & s) : // NOLINT(google-explicit-constructor)
+            Direction{std::string_view{s}}
+        {}
+
+        // e.g., "x"
+        //   needed for implicit conversion, same as above
+        Direction (char const * c) : // NOLINT(google-explicit-constructor)
+            Direction{checked_string_view(c)}
+        {}
+
+        // e.g., 'x'
+        //   deleted, because a char would otherwise promote silently to Direction (int)
+        Direction (char) = delete;
+
+        // rule of five: explicitly default copy, move, and destruction
+        //   (the converting constructors above do not suppress them)
         ~Direction () = default;
         Direction (const Direction&) = default;
         Direction& operator= (const Direction&) = default;
