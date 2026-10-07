@@ -118,7 +118,7 @@ namespace ablastr::fields
 
         bool operator<(const Direction& other) const
         {
-            return other.dir < this->dir;
+            return this->dir < other.dir;
         }
 
         operator std::string() const // NOLINT(google-explicit-constructor)
