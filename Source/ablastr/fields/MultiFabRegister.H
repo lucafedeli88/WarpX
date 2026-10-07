@@ -17,6 +17,7 @@
 #include <AMReX_Vector.H>
 
 #include <array>
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <optional>
@@ -73,7 +74,7 @@ namespace ablastr::fields
         int dir = 0;
 
         /** std::string_view{nullptr} is undefined behavior (strlen), so throw instead */
-        static std::string_view checked_string_view (char const * c)
+        static constexpr std::string_view checked_string_view (char const * c)
         {
             if (c == nullptr) {
                 throw std::runtime_error("invalid direction: nullptr");
@@ -82,31 +83,37 @@ namespace ablastr::fields
         }
 
     public:
-        constexpr explicit Direction (int d) : dir(d) {}
+        constexpr explicit Direction (int d) : dir(d)
+        {
+            // vector/tensor fields have three components in all dimensionalities
+            if (d < 0 || d > 2) {
+                throw std::runtime_error("invalid direction: " + std::to_string(d));
+            }
+        }
 
 #if defined(WARPX_DIM_RZ) || defined(WARPX_DIM_RCYLINDER) || defined(WARPX_DIM_RSPHERE)
         static const Direction r;
         static const Direction theta;
 
-        inline static const std::string r_string = "r";
-        inline static const std::string theta_string = "theta";
+        static constexpr std::string_view r_string = "r";
+        static constexpr std::string_view theta_string = "theta";
 #endif
 #if defined(WARPX_DIM_RSPHERE)
         static const Direction phi;
 
-        inline static const std::string phi_string = "phi";
+        static constexpr std::string_view phi_string = "phi";
 #endif
 #if defined(WARPX_DIM_3D) || defined(WARPX_DIM_XZ) || defined(WARPX_DIM_1D_Z)
         static const Direction x;
         static const Direction y;
 
-        inline static const std::string x_string = "x";
-        inline static const std::string y_string = "y";
+        static constexpr std::string_view x_string = "x";
+        static constexpr std::string_view y_string = "y";
 #endif
 #if !defined(WARPX_DIM_RSPHERE)
         static const Direction z;
 
-        inline static const std::string z_string = "z";
+        static constexpr std::string_view z_string = "z";
 #endif
 
         bool operator<(const Direction& other) const
@@ -117,24 +124,24 @@ namespace ablastr::fields
         operator std::string() const // NOLINT(google-explicit-constructor)
         {
 #if defined(WARPX_DIM_RZ) || defined(WARPX_DIM_RCYLINDER) || defined(WARPX_DIM_RSPHERE)
-            if (dir == r) { return r_string; }
-            if (dir == theta) { return theta_string; }
+            if (dir == r) { return std::string{r_string}; }
+            if (dir == theta) { return std::string{theta_string}; }
 #endif
 #if defined(WARPX_DIM_RSPHERE)
-            if (dir == phi) { return phi_string; }
+            if (dir == phi) { return std::string{phi_string}; }
 #endif
 #if defined(WARPX_DIM_3D) || defined(WARPX_DIM_XZ) || defined(WARPX_DIM_1D_Z)
-            if (dir == x) { return x_string; }
-            if (dir == y) { return y_string; }
+            if (dir == x) { return std::string{x_string}; }
+            if (dir == y) { return std::string{y_string}; }
 #endif
 #if !defined(WARPX_DIM_RSPHERE)
-            if (dir == z) { return z_string; }
+            if (dir == z) { return std::string{z_string}; }
 #endif
             throw std::runtime_error("invalid direction: " + std::to_string(dir));
             return std::to_string(dir);
         }
 
-        Direction (const std::string_view sv) : // NOLINT(google-explicit-constructor)
+        constexpr Direction (const std::string_view sv) : // NOLINT(google-explicit-constructor)
             dir{-1}
         {
 #if defined(WARPX_DIM_RZ) || defined(WARPX_DIM_RCYLINDER) || defined(WARPX_DIM_RSPHERE)
@@ -166,7 +173,7 @@ namespace ablastr::fields
 
         // e.g., "x"
         //   needed for implicit conversion, same as above
-        Direction (char const * c) : // NOLINT(google-explicit-constructor)
+        constexpr Direction (char const * c) : // NOLINT(google-explicit-constructor)
             Direction{checked_string_view(c)}
         {}
 
@@ -174,16 +181,12 @@ namespace ablastr::fields
         //   deleted, because a char would otherwise promote silently to Direction (int)
         Direction (char) = delete;
 
-        // rule of five: explicitly default copy, move, and destruction
-        //   (the converting constructors above do not suppress them)
-        ~Direction () = default;
-        Direction (const Direction&) = default;
-        Direction& operator= (const Direction&) = default;
-        Direction (Direction&&) = default;
-        Direction& operator= (Direction&&) = default;
+        // e.g., nullptr
+        //   deleted, so a literal nullptr fails at compile time instead of at runtime
+        Direction (std::nullptr_t) = delete;
 
         /* TODO: just temporary int compatibility */
-        operator int() const { return dir; } // NOLINT(google-explicit-constructor)
+        constexpr operator int() const { return dir; } // NOLINT(google-explicit-constructor)
 
     };
 
