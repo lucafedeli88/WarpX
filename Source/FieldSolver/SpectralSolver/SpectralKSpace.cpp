@@ -10,6 +10,7 @@
 #include "Utils/TextMsg.H"
 #include "Utils/WarpXConst.H"
 
+#include <ablastr/math/Complex.H>
 #include <ablastr/math/FiniteDifference.H>
 #include <ablastr/utils/Enums.H>
 
@@ -28,6 +29,7 @@
 #include <cmath>
 #include <vector>
 
+using namespace amrex::math;
 using namespace amrex;
 
 /* \brief Initialize k space object.
