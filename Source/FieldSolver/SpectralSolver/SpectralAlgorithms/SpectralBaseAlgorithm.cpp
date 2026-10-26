@@ -7,7 +7,6 @@
 #include "SpectralBaseAlgorithm.H"
 
 #include "FieldSolver/SpectralSolver/SpectralFieldData.H"
-#include "Utils/WarpX_Complex.H"
 
 #include <ablastr/fields/MultiFabRegister.H>
 
