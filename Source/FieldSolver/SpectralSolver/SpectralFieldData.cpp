@@ -11,6 +11,8 @@
 #include "Utils/WarpXUtil.H"
 #include "WarpX.H"
 
+#include <ablastr/math/Complex.H>
+
 #include <AMReX_Array4.H>
 #include <AMReX_BLassert.H>
 #include <AMReX_Box.H>
@@ -31,6 +33,7 @@
 
 #if WARPX_USE_FFT
 
+using namespace ablastr::math;
 using namespace amrex;
 
 SpectralFieldIndex::SpectralFieldIndex (const bool update_with_rho,

@@ -28,7 +28,7 @@
 
 #if WARPX_USE_FFT
 
-using namespace ablstr::math;
+using namespace ablastr::math;
 using namespace amrex::literals;
 
 PsatdAlgorithmJRhomSecondOrder::PsatdAlgorithmJRhomSecondOrder(

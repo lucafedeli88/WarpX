@@ -8,6 +8,7 @@
 
 #include "FieldSolver/SpectralSolver/SpectralFieldData.H"
 
+#include <ablastr/math/Complex.H>
 #include <ablastr/fields/MultiFabRegister.H>
 
 #include <AMReX_Array4.H>
@@ -23,6 +24,7 @@
 #include <array>
 #include <memory>
 
+using namespace ablastr::math;
 using namespace amrex;
 
 /**

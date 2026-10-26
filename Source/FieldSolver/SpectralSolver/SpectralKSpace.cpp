@@ -29,7 +29,7 @@
 #include <cmath>
 #include <vector>
 
-using namespace amrex::math;
+using namespace ablastr::math;
 using namespace amrex;
 
 /* \brief Initialize k space object.
