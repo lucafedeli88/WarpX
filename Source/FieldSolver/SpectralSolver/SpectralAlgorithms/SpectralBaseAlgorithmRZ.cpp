@@ -6,7 +6,6 @@
  */
 #include "SpectralBaseAlgorithmRZ.H"
 
-#include <ablastr/math/Complex.H>
 #include <ablastr/fields/MultiFabRegister.H>
 
 #include <cmath>
