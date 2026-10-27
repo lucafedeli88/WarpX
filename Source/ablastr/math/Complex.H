@@ -9,10 +9,9 @@
 #define ABLASTR_MATH_COMPLEX_H_
 
 #ifdef ABLASTR_USE_FFT
-#  include <ablastr/math/fft/AnyFFT.H>
+#  include "ablastr/math/fft/AnyFFT.H"
 #endif
 
-#include <AMReX_Gpu.H>
 #include <AMReX_GpuComplex.H>
 #include <AMReX_REAL.H>
 
@@ -23,7 +22,7 @@ namespace ablastr::math
 
 #ifdef ABLASTR_USE_FFT
     static_assert(sizeof(Complex) == sizeof(ablastr::math::anyfft::Complex),
-    "The complex type in WarpX and the FFT library do not match.");
+    "The complex types in ablastr/math/Complex.H and ablastr/math/fft/AnyFFT.H do not match.");
 #endif
 
     static_assert(sizeof(Complex) == sizeof(amrex::Real[2]),
