@@ -10,9 +10,7 @@
 #include "Utils/TextMsg.H"
 #include "Utils/WarpXConst.H"
 
-#include <ablastr/math/Complex.H>
 #include <ablastr/math/FiniteDifference.H>
-#include <ablastr/utils/Enums.H>
 
 #include <AMReX_BLassert.H>
 #include <AMReX_Box.H>
