@@ -233,6 +233,12 @@ jobs:
         export OMP_NUM_THREADS=2
 
         echo "=================================================================================================== "
+        echo "=====  Examples/Tests/particle_absorbing_boundary/inputs_test_1d_particle_absorbing_boundary ====== "
+        echo "=================================================================================================== "
+        mpirun -n 2 ./build/bin/warpx.1d Examples/Tests/particle_absorbing_boundary/inputs_test_1d_particle_absorbing_boundary warpx.serialize_initial_conditions = 0
+        rm -rf ./diags
+
+        echo "=================================================================================================== "
         echo "========================  Examples/Physics_applications/laser_acceleration ======================== "
         echo "=================================================================================================== "
         mpirun -n 2 ./build/bin/warpx.1d Examples/Physics_applications/laser_acceleration/inputs_base_1d warpx.serialize_initial_conditions = 0
