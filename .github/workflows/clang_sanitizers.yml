@@ -314,6 +314,12 @@ jobs:
         ulimit -c unlimited
 
         echo "=================================================================================================== "
+        echo "========================  TEST TO BE REMOVED LATER ======================== "
+        echo "=================================================================================================== "
+        mpirun -n 2 ./build/bin/warpx.2d Examples/TO_BE_REMOVED.2d warpx.serialize_initial_conditions = 0
+        rm -rf ./diags
+
+        echo "=================================================================================================== "
         echo "========================  Examples/Physics_applications/laser_acceleration ======================== "
         echo "=================================================================================================== "
         mpirun -n 2 ./build/bin/warpx.2d Examples/Physics_applications/laser_acceleration/inputs_base_2d warpx.serialize_initial_conditions = 0
